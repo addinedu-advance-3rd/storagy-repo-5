@@ -407,7 +407,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         cache.pop('version')  # remove version
         labels, shapes, self.segments = zip(*cache.values())
         self.labels = list(labels)
-        self.shapes = np.array(shapes, dtype=np.float64)
+        self.shapes = np.array(shapes, dtype=float)
         self.img_files = list(cache.keys())  # update
         self.label_files = img2label_paths(cache.keys())  # update
         if single_cls:
@@ -488,10 +488,10 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                     with open(lb_file, 'r') as f:
                         l = [x.split() for x in f.read().strip().splitlines()]
                         if any([len(x) > 8 for x in l]):  # is segment
-                            classes = np.array([x[0] for x in l], dtype=np.float32)
-                            segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in l]  # (cls, xy1...)
+                            classes = np.array([x[0] for x in l], dtype=float)
+                            segments = [np.array(x[1:], dtype=float).reshape(-1, 2) for x in l]  # (cls, xy1...)
                             l = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)  # (cls, xywh)
-                        l = np.array(l, dtype=np.float32)
+                        l = np.array(l, dtype=float)
                     if len(l):
                         assert l.shape[1] == 5, 'labels require 5 columns each'
                         assert (l >= 0).all(), 'negative labels'
@@ -499,10 +499,10 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                         assert np.unique(l, axis=0).shape[0] == l.shape[0], 'duplicate labels'
                     else:
                         ne += 1  # label empty
-                        l = np.zeros((0, 5), dtype=np.float32)
+                        l = np.zeros((0, 5), dtype=float)
                 else:
                     nm += 1  # label missing
-                    l = np.zeros((0, 5), dtype=np.float32)
+                    l = np.zeros((0, 5), dtype=float)
                 x[im_file] = [l, shape, segments]
             except Exception as e:
                 nc += 1
@@ -1151,7 +1151,7 @@ def cutout(image, labels):
 
         # return unobscured labels
         if len(labels) and s > 0.03:
-            box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+            box = np.array([xmin, ymin, xmax, ymax], dtype=float)
             ioa = bbox_ioa(box, labels[:, 1:5])  # intersection over area
             labels = labels[ioa < 0.60]  # remove >60% obscured labels
 
@@ -1176,7 +1176,7 @@ def pastein(image, labels, sample_labels, sample_images, sample_masks):
         xmax = min(w, xmin + mask_w)
         ymax = min(h, ymin + mask_h)   
         
-        box = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
+        box = np.array([xmin, ymin, xmax, ymax], dtype=float)
         if len(labels):
             ioa = bbox_ioa(box, labels[:, 1:5])  # intersection over area     
         else:
@@ -1205,7 +1205,7 @@ def pastein(image, labels, sample_labels, sample_images, sample_masks):
                     #print(sample_labels[sel_ind])
                     #print(sample_images[sel_ind].shape)
                     #print(temp_crop.shape)
-                    box = np.array([xmin, ymin, xmin+r_w, ymin+r_h], dtype=np.float32)
+                    box = np.array([xmin, ymin, xmin+r_w, ymin+r_h], dtype=float)
                     if len(labels):
                         labels = np.concatenate((labels, [[sample_labels[sel_ind], *box]]), 0)
                     else:
@@ -1272,7 +1272,7 @@ def extract_boxes(path='../coco/'):  # from utils.datasets import *; extract_box
             lb_file = Path(img2label_paths([str(im_file)])[0])
             if Path(lb_file).exists():
                 with open(lb_file, 'r') as f:
-                    lb = np.array([x.split() for x in f.read().strip().splitlines()], dtype=np.float32)  # labels
+                    lb = np.array([x.split() for x in f.read().strip().splitlines()], dtype=float)  # labels
 
                 for j, x in enumerate(lb):
                     c = int(x[0])  # class

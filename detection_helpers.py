@@ -8,10 +8,11 @@ from utils.datasets import letterbox, np
 from utils.general import check_img_size, non_max_suppression, apply_classifier,scale_coords, xyxy2xywh
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier,TracedModel
-
+from models.yolo import Model  # YOLO 모델 클래스 임포트
+torch.serialization.add_safe_globals([Model])
 
 class Detector:
-    def __init__(self, conf_thres:float = 0.25, iou_thresh:float = 0.45, agnostic_nms:bool = False, save_conf:bool = False, classes:list = None):
+    def __init__(self, conf_thres:float = 0.25, iou_thresh:float = 0.3, agnostic_nms:bool = False, save_conf:bool = False, classes:list = None):
         '''
         args:
         conf_thres: Thresholf for Classification
@@ -28,7 +29,7 @@ class Detector:
         self.save_conf = save_conf
 
 
-    def load_model(self, weights:str, img_size:int = 640, trace:bool = True, classify:bool = False):
+    def load_model(self, weights:str, img_size:int = 480, trace:bool = False, classify:bool = False):
         '''
         weights: Path to the model
         img_size: Input image size of the model
@@ -37,7 +38,7 @@ class Detector:
         '''
         self.half = self.device.type != 'cpu'  # half precision only supported on CUDA
 
-        self.model = attempt_load(weights, map_location=self.device)  # load FP32 model
+        self.model = attempt_load(weights, map_location=self.device, weights_only=False)  # load FP32 model with full checkpoint
         self.stride = int(self.model.stride.max())  # model stride
         self.imgsz = check_img_size(img_size, s=self.stride)  # check img_size
 
@@ -60,11 +61,11 @@ class Detector:
          # Get names and colors of Colors for BB creation
         self.names = self.model.module.names if hasattr(self.model, 'module') else self.model.names
         self.colors = [[random.randint(0, 255) for _ in range(3)] for _ in self.names]
-        
+
 
 
     @torch.no_grad()
-    def detect(self, source, plot_bb:bool =True):
+    def detect(self, source, plot_bb:bool =False):
         '''
         source: Path to image file, video file, link or text etc
         plot_bb: whether to plot the bounding box around image or return the prediction
@@ -112,7 +113,10 @@ class Detector:
         Load and pre process the image
         args: img0: Path of image or numpy image in 'BGR" format
         '''
-        if isinstance(img0, str): img0 = cv2.imread(img0)  # BGR
+        if isinstance(img0, str): 
+            img0 = cv2.imread(img0)  # BGR
+        else:
+            img0 = img0
         assert img0 is not None, 'Image Not Found '
 
         # Padded resize

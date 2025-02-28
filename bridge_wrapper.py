@@ -58,7 +58,70 @@ class YOLOv7_DeepSORT:
         metric = nn_matching.NearestNeighborDistanceMetric("cosine", max_cosine_distance, nn_budget) # calculate cosine distance metric
         self.tracker = Tracker(metric) # initialize tracker
 
+    def update_frame(self,frame):
+        """
+        실시간 프레임에 대해 YOLO 검출 및 Deep SORT 추적 업데이트를 수행
+        
+        Args:
+            frame (numpy.ndarray): BGR 형식의 입력 이미지(프레임)
+        
+        Returns:
+            frame (numpy.ndarray): 추적 결과(바운딩 박스 및 ID)가 그려진 이미지
+        """
+        yolo_results = self.detector.detect(frame.copy(), plot_bb=False)
 
+        if yolo_results is None:
+            bboxes = []
+            scores = []
+            classes = []
+        else:
+            # 결과가 (N, 6) 배열 형태라고 가정합니다.
+            bboxes = yolo_results[:, :4].copy()
+            # 바운딩 박스 형식: 여기서는 YOLO는 (x1,y1,x2,y2)를 반환하므로, Deep SORT에서는 (x, y, w, h) 형식이 필요할 수 있습니다.
+            bboxes[:, 2] = bboxes[:, 2] - bboxes[:, 0]  # width
+            bboxes[:, 3] = bboxes[:, 3] - bboxes[:, 1]  # height
+            scores = yolo_results[:, 4]
+            classes = yolo_results[:, 5]
+
+        num_objects = len(bboxes) ## 1로 고정되어야함 
+
+        if num_objects == 0:
+            detections = []
+        else: # 사람이 검출될 때
+            # Deep SORT의 encoder는 보통 RGB 이미지를 요구하므로, 프레임을 BGR에서 RGB로 변환
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # encoder() 함수는 바운딩 박스 리스트와 프레임(RGB)를 입력받아 각 검출에 대한 특징 벡터를 반환합니다.
+            features = self.encoder(frame_rgb, bboxes)
+            # Detection 객체 생성 (deep_sort.detection.Detection)
+            detections = [Detection(bbox, score, self.class_names[int(cls)], feature)
+                          for bbox, score, cls, feature in zip(bboxes, scores, classes, features)]
+        
+        # NMS 적용 (Deep SORT에서 추천하는 방식)
+        if len(detections) > 0:
+            boxs = np.array([d.tlwh for d in detections])
+            scores_arr = np.array([d.confidence for d in detections])
+            # 여기서 preprocessing.non_max_suppression() 함수 사용 (Deep SORT 구현 참고)
+            indices = preprocessing.non_max_suppression(boxs, np.array([d.class_name for d in detections]), self.nms_max_overlap, scores_arr)
+            detections = [detections[i] for i in indices]
+
+        # Tracker 업데이트: 먼저 예측(prediction)을 수행한 후, 검출 결과를 업데이트합니다.
+        self.tracker.predict()
+        self.tracker.update(detections)
+
+        # 결과 그리기: 업데이트된 트랙 정보에 따라 바운딩 박스와 ID를 프레임에 그립니다.
+        cmap = plt.get_cmap('tab20b')
+        colors = [cmap(i)[:3] for i in np.linspace(0, 1, 20)]
+        for track in self.tracker.tracks:
+            if not track.is_confirmed() or track.time_since_update > 1:
+                continue
+            bbox = track.to_tlbr()  # [x1, y1, x2, y2]
+            class_name = track.get_class()
+            color = [int(c * 255) for c in colors[int(track.track_id) % len(colors)]]
+            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), color, 2)
+            cv2.rectangle(frame, (int(bbox[0]), int(bbox[1]-30)), (int(bbox[0]) + (len(class_name) + len(str(track.track_id)))*17, int(bbox[1])), color, -1)
+            cv2.putText(frame, f"{class_name} : {track.track_id}", (int(bbox[0]), int(bbox[1]-11)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1, lineType=cv2.LINE_AA)
+        return frame
+    
     def track_video(self,video:str, output:str, skip_frames:int=0, show_live:bool=False, count_objects:bool=False, verbose:int = 0):
         '''
         Track any given webcam or video

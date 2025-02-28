@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 import tensorflow.compat.v1 as tf
 
-#tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_eager_execution()
 
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
@@ -16,7 +16,7 @@ if len(physical_devices) > 0:
 
 class Dummy:
     def __init__(self, video:str, output:str="./io_data/output/output.avi", coco_names_path:str ="./io_data/input/classes/coco.names", output_format:str='XVID', 
-    iou:float=0.45, score:bool=0.5, dont_show:bool=False, count:bool=False):
+    iou:float=0.45, score:bool=0.5, dont_show:bool=False, count:bool=True):
         '''
         args: 
             video: path to input video or set to 0 for webcam
@@ -86,7 +86,7 @@ def extract_image_patch(image, bbox, patch_shape):
 
     # convert to top left, bottom right
     bbox[2:] += bbox[:2]
-    bbox = bbox.astype(np.int)
+    bbox = bbox.astype(int)
 
     # clip at image boundaries
     bbox[:2] = np.maximum(0, bbox[:2])
@@ -118,8 +118,8 @@ class ImageEncoder(object):
         self.feature_dim = self.output_var.get_shape().as_list()[-1]
         self.image_shape = self.input_var.get_shape().as_list()[1:]
 
-    def __call__(self, data_x, batch_size=32):
-        out = np.zeros((len(data_x), self.feature_dim), np.float32)
+    def __call__(self, data_x, batch_size=128):
+        out = np.zeros((len(data_x), self.feature_dim), float)
         _run_in_batches(
             lambda x: self.session.run(self.output_var, feed_dict=x),
             {self.input_var: data_x}, out, batch_size)
@@ -190,9 +190,9 @@ def generate_detections(encoder, mot_dir, output_dir, detection_dir=None):
         detections_in = np.loadtxt(detection_file, delimiter=',')
         detections_out = []
 
-        frame_indices = detections_in[:, 0].astype(np.int)
-        min_frame_idx = frame_indices.astype(np.int).min()
-        max_frame_idx = frame_indices.astype(np.int).max()
+        frame_indices = detections_in[:, 0].astype(int)
+        min_frame_idx = frame_indices.astype(int).min()
+        max_frame_idx = frame_indices.astype(int).max()
         for frame_idx in range(min_frame_idx, max_frame_idx + 1):
             print("Frame %05d/%05d" % (frame_idx, max_frame_idx))
             mask = frame_indices == frame_idx
