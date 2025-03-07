@@ -1,10 +1,13 @@
 import os
 import re
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, send_file
 from werkzeug.utils import secure_filename
 import cv2, pytesseract
 import numpy as np
 from PIL import Image
+import yaml
+import io
+import textwrap
 
 # Blueprint 생성
 guideline_bp = Blueprint('guideline', __name__, template_folder='templates')
@@ -83,7 +86,6 @@ def guideline():
         extracted_numbers=None
     )
 
-
 def process_image(image):
     """이미지 OCR 처리 함수"""
     try:
@@ -109,9 +111,63 @@ def process_image(image):
 
         return f"OCR 처리 중 오류 발생: {e}"
 
-
 def extract_numbers(ocr_text):
     """OCR 결과에서 숫자 추출"""
     # 정규표현식을 사용하여 숫자 추출
     numbers = re.findall(r'\d+\.?\d*', ocr_text)  # 정수와 소수를 포함한 숫자 추출
     return [float(num) if '.' in num else int(num) for num in numbers]
+
+
+@guideline_bp.route('/export_yaml', methods=['POST'])
+def export_yaml():
+    """사용자 데이터를 YAML 파일로 내보내기"""
+    class FlowList(list):
+        pass
+
+    def flow_style_representer(dumper, data):
+        return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
+
+    # 플로우 스타일 리스트 타입 등록
+    yaml.add_representer(FlowList, flow_style_representer)
+
+    try:
+        # 클라이언트에서 전송된 데이터 받기
+        data = request.json
+        
+        # 플로우 스타일 리스트로 변환
+        origin_list = FlowList([
+            float(data['origin']['x']), 
+            float(data['origin']['y']), 
+            float(data['origin']['theta'])
+        ])
+        
+        # YAML 구조 설정
+        yaml_data = {
+            "image": "map.pgm",
+            "mode": "trinary",  # (옵션) 3가지 색 구분 방식 (장애물, 이동 가능, 불확실)
+            "resolution": float(data['scale_factor']),  # 1 픽셀이 실제 세계에서 몇 m인지 설정 (m/pixel)
+            "origin": origin_list,  # 맵의 원점 (X, Y, Theta)
+            "occupied_thresh": 0.65,  # 점유(장애물) 임계값
+            "free_thresh": 0.25,  # 자유 공간(이동 가능) 임계값
+            "negate": 0  # 색상 반전 여부 (0이면 흰색=이동 가능, 1이면 흑색 반전)
+        }
+        # YAML 파일 생성
+        yaml_content = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
+        
+        # 메모리 내 파일로 변환
+        yaml_file = io.BytesIO(yaml_content.encode('utf-8'))
+        yaml_file.seek(0)
+        
+        # 파일 다운로드 제공
+        return send_file(
+            yaml_file,
+            as_attachment=True,
+            download_name='map.yaml',
+            mimetype='application/x-yaml'
+        )
+    
+    except Exception as e:
+        import traceback
+        print("YAML 내보내기 오류:", str(e))
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
