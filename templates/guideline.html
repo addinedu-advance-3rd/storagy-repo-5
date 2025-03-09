@@ -67,7 +67,7 @@
 </head>
 <body>
     <div id="container1" class="container">
-        <h1>도면 업로드 및 거리 측정</h1>
+        <h1>Nav2 맵 변환기</h1>
         
         <form action="/guideline" method="post" enctype="multipart/form-data">
             <label for="file">도면 이미지 파일:</label>
@@ -86,26 +86,26 @@
                 <button id="resetPoints">점 초기화</button>
                 <button id="exportYaml">YAML 파일 내보내기</button>
             </div>
-        {% endif %}
 
-        {% if extracted_numbers %}
             <h2>숫자 선택:</h2>
             <select id="numberDropdown">
-                {% for number in extracted_numbers %}
-                    <option value="{{ number }}">{{ number }}</option>
-                {% endfor %}
+                {% if extracted_numbers %}
+                    {% for number in extracted_numbers %}
+                        <option value="{{ number }}">{{ number }}</option>
+                    {% endfor %}
+                {% endif %}
                 <option value="manual">직접 입력</option>
             </select>
             <input type="number" id="manualInput" placeholder="숫자 입력" class="hidden">
-        {% endif %}
 
-        <h2>거리 단위 선택:</h2>
-        <select id="unitDropdown">
-            <option value="km">킬로미터(km)</option>
-            <option value="m">미터(m)</option>
-            <option value="cm">센티미터(cm)</option>
-            <option value="mm">밀리미터(mm)</option>
-        </select>
+            <h2>거리 단위 선택:</h2>
+            <select id="unitDropdown">
+                <option value="km">킬로미터(km)</option>
+                <option value="m" selected>미터(m)</option>
+                <option value="cm">센티미터(cm)</option>
+                <option value="mm">밀리미터(mm)</option>
+            </select>
+        {% endif %}
     </div>
 
     <script>
@@ -113,17 +113,27 @@
         const manualInput = document.getElementById("manualInput");
 
         if(numberDropdown) {
-            console.log("도면에서 숫자 추출 완료. 숫자를 선택하세요.");
-            numberDropdown.addEventListener("change", () => {
+            console.log("numberDropdown: 도면에서 OCR로 숫자 추출하기 결과를 받았습니다.");
+            
+            // 입력 필드 표시 상태 업데이트 함수
+            function updateManualInputVisibility() {
                 if (numberDropdown.value === "manual") {
                     manualInput.classList.remove("hidden");
                 } else {
                     manualInput.classList.add("hidden");
                 }
-            });
-        }
-        else {
-            console.log("도면을 업로드하세요.");
+            }
+            /*
+            초기 상태 설정
+            change 이벤트 리스너 등록 전에 먼저 설정하여 
+            옵션이 "직접 입력"만 가능한 경우 직접 입력 필드가 바로 표시되도록 함
+            */
+            updateManualInputVisibility();
+            
+            // change 이벤트 리스너 추가
+            numberDropdown.addEventListener("change", updateManualInputVisibility);
+        } else {
+            console.log("numberDropdown: 도면을 업로드하세요.");
         }
 
         let points = []; // 변수 재할당 가능

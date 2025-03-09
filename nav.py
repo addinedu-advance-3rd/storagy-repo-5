@@ -20,7 +20,7 @@ robot_path_data = []
 current_target_data = None
 current_user_gps = None
 
-YAML_PATH = "static/test.yaml"
+YAML_PATH = "static/map.yaml"
 map_data = {}
 map_image_path = ""
 
@@ -29,7 +29,7 @@ def load_map():
 
     # 현재 스크립트 파일의 디렉토리 경로 가져오기
     current_dir = os.path.dirname(__file__)  
-    yaml_path = os.path.join(current_dir, "static/test.yaml")  # 상대 경로로 YAML 파일 설정
+    yaml_path = os.path.join(current_dir, "static/map.yaml")  # 상대 경로로 YAML 파일 설정
 
     if not os.path.exists(yaml_path):
         print(f"❌ YAML 파일을 찾을 수 없습니다: {yaml_path}")
