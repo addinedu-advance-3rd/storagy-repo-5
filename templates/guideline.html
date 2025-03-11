@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guideline OCR</title>
+    <title>Nav2 맵 변환기</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,6 +21,31 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             max-width: 800px;
             width: 100%;
+        }
+        .header {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            grid-column: 2;
+            margin: 0;
+            text-align: center;
+        }
+        .restart-btn {
+            grid-column: 3;
+            justify-self: end;
+
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .restart-btn:hover {
+            background-color: #218838;
         }
         select, input[type="number"] {
             margin-top: 10px;
@@ -63,49 +88,158 @@
         .hidden {
             display: none;
         }
+        .guide-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .guide-text {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .guide-step {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #202124;
+        }
+        .guide-note {
+            font-style: italic;
+            color: #5f6368;
+            font-size: 0.9em;
+        }
+        .result-container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .distance-info {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .real-distance {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .distance-selectors {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .file-generation-result {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e6f4ea;
+            border-left: 4px solid #34a853;
+            text-align: center;
+        }
+        .download-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .download-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4285f4;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .download-btn:hover {
+            background-color: #3367d6;
+        }
     </style>
 </head>
 <body>
     <div id="container1" class="container">
-        <h1>Nav2 맵 변환기</h1>
-        
-        <form action="/guideline" method="post" enctype="multipart/form-data">
-            <label for="file">도면 이미지 파일:</label>
-            <input type="file" name="file" id="file" required>
-            <button type="submit">업로드</button>
-        </form>
+        <div class="header">
+            <h1>Nav2 맵 변환기</h1>
+            <a href="/guideline" class="restart-btn">도면 재업로드 하기</a>
+        </div>
 
-        {% if uploaded_image_url %}
-            <h2>업로드된 이미지:</h2>
-            <div id="container2" class="container">
-                <img id="uploadedImage" src="{{ uploaded_image_url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
-                <canvas id="canvas"></canvas>
+        <div id="mainContent">
+            {% if not uploaded_image_url %}
+                <div class="guide-info">
+                    <p class="guide-text">[안내] 평면도 이미지를 업로드하면 AI가 map.pgm 파일을 만들어줍니다.<br>
+                    이미지와 실제 거리 비율을 계산하여 map.yaml 파일을 만들어줍니다.</p>
+                    <p class="guide-step">1. 평면도 이미지를 업로드 해주세요.</p>
+                </div>
+
+                <form action="/guideline" method="post" enctype="multipart/form-data">
+                    <label for="file">도면 이미지 파일:</label>
+                    <input type="file" name="file" id="file" required>
+                    <button type="submit">업로드</button>
+                </form>
+
+            {% elif uploaded_image_url %}
+                <div class="guide-info">
+                    <p class="guide-step">2. 평면도에서 추출한 실제 거리를 선택하고, 평면도에서 실제 거리에 해당하는 두 점을 클릭해주세요.</p>
+                    <p class="guide-note">* 이미지와 실제 거리 비율 계산을 위해 필요합니다.</p>
+                </div>
+                
+                <h2>업로드된 이미지:</h2>
+                <div id="container2" class="container">
+                    <img id="uploadedImage" src="{{ uploaded_image_url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+                    <canvas id="canvas"></canvas>
+                </div>
+                
+                <div class="result-container">
+                    <div class="distance-info">
+                        <p>클릭한 두 점 사이의 픽셀 거리: <span id="distance">0</span> 픽셀</p>
+                        
+                        <div class="real-distance">
+                            <p>실제 거리:</p>
+                            <div class="distance-selectors">
+                                <select id="numberDropdown">
+                                    {% if extracted_numbers %}
+                                        {% for number in extracted_numbers %}
+                                            <option value="{{ number }}">{{ number }}</option>
+                                        {% endfor %}
+                                    {% endif %}
+                                    <option value="manual">직접 입력</option>
+                                </select>
+                                <input type="number" id="manualInput" placeholder="숫자 입력" class="hidden">
+                                
+                                <select id="unitDropdown">
+                                    <option value="km">킬로미터(km)</option>
+                                    <option value="m" selected>미터(m)</option>
+                                    <option value="cm">센티미터(cm)</option>
+                                    <option value="mm">밀리미터(mm)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button id="resetPoints">점 초기화</button>
+                        <button id="generateFiles">map.yaml, map.pgm 파일 생성하기</button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- 파일 생성 완료 메시지와 다운로드 버튼 (파일 생성이 완료되면 활성화) -->
+        <div id="fileGenerationComplete" class="file-generation-result" style="display: none;">
+            <p>파일이 생성되었습니다.</p>
+            <div class="download-buttons">
+                <a id="downloadYAML" href="/guideline/download/yaml" class="download-btn">map.yaml 다운로드</a>
+                <a id="downloadPGM" href="/guideline/download/pgm" class="download-btn">map.pgm 다운로드</a>
             </div>
-            <div class="result">
-                <p>두 점 간의 픽셀 거리: <span id="distance">0</span> 픽셀</p>
-                <button id="resetPoints">점 초기화</button>
-                <button id="exportYaml">YAML 파일 내보내기</button>
-            </div>
-
-            <h2>숫자 선택:</h2>
-            <select id="numberDropdown">
-                {% if extracted_numbers %}
-                    {% for number in extracted_numbers %}
-                        <option value="{{ number }}">{{ number }}</option>
-                    {% endfor %}
-                {% endif %}
-                <option value="manual">직접 입력</option>
-            </select>
-            <input type="number" id="manualInput" placeholder="숫자 입력" class="hidden">
-
-            <h2>거리 단위 선택:</h2>
-            <select id="unitDropdown">
-                <option value="km">킬로미터(km)</option>
-                <option value="m" selected>미터(m)</option>
-                <option value="cm">센티미터(cm)</option>
-                <option value="mm">밀리미터(mm)</option>
-            </select>
-        {% endif %}
+        </div>
     </div>
 
     <script>
@@ -151,7 +285,7 @@
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             const distanceElement = document.getElementById('distance');
-            const resetButton = document.getElementById('resetPoints');
+            const resetPointsButton = document.getElementById('resetPoints');
 
             console.log('캔버스 초기화 완료.');
 
@@ -235,8 +369,8 @@
             }
 
             // 점 초기화 버튼
-            if (resetButton) {
-                resetButton.addEventListener('click', function() {
+            if (resetPointsButton) {
+                resetPointsButton.addEventListener('click', function() {
                     points = [];
                     distanceElement.textContent = '0';
                     console.log('점 초기화됨.');
@@ -244,149 +378,135 @@
                 });
             }
 
-            // YAML 내보내기 버튼 이벤트 리스너 추가
-            const exportYamlBtn = document.getElementById('exportYaml');
-            if (exportYamlBtn) {
-                exportYamlBtn.addEventListener('click', exportToYaml);
-            }
+            const generateFilesButton = document.getElementById('generateFiles');
 
-            // YAML 내보내기 함수
-            function exportToYaml() {
-                const pixelDistance = parseFloat(document.getElementById('distance').textContent);
-                
-                // 숫자 선택 또는 직접 입력 값 가져오기
-                let realDistance;
-                
-                if (numberDropdown && numberDropdown.value !== 'manual') {
-                    realDistance = parseFloat(numberDropdown.value);
-                } else if (manualInput && manualInput.value) {
-                    realDistance = parseFloat(manualInput.value);
-                } else {
-                    alert('실제 거리 값을 선택하거나 입력하세요.');
-                    return;
-                }
-                
-                // 단위 가져오기
-                const unit = document.getElementById('unitDropdown').value;
-                
-                // 유효성 검증
-                if (isNaN(pixelDistance) || pixelDistance <= 0) {
-                    alert('유효한 픽셀 거리가 없습니다. 두 점을 선택했는지 확인하세요.');
-                    return;
-                }
-                if (isNaN(realDistance) || realDistance <= 0) {
-                    alert('유효한 실제 거리 값을 입력하세요.');
-                    return;
-                }
-                
-                // 소수점 형식 지정 함수
-                function formatNumber(num, decimals = 6) {
-                    return parseFloat(parseFloat(num).toFixed(decimals));
-                }
+            // 파일 생성 버튼 이벤트 리스너
+            if(generateFilesButton) {
+                generateFilesButton.addEventListener('click', function() {
+                    const pixelDistance = parseFloat(distanceElement.textContent);
 
-                // 스케일 계산 (단위 변환 필요 - mm, cm, km를 m로 변환)
-                let convertedDistance = realDistance;
-                switch(unit) {
-                    case 'mm':
-                        convertedDistance = formatNumber(realDistance / 1000);
-                        break;
-                    case 'cm':
-                        convertedDistance = formatNumber(realDistance / 100);
-                        break;
-                    case 'km':
-                        convertedDistance = formatNumber(realDistance * 1000);
-                        break;
-                }
-                
-                const scaleFactor = formatNumber(convertedDistance / pixelDistance); // 해상도 계산 (m / pixel)
-                
-                // origin 계산
-                const originX = formatNumber(-(imageWidth * scaleFactor) / 2);
-                const originY = formatNumber(-(imageHeight * scaleFactor) / 2);
-
-                // https://hianna.tistory.com/857
-                // yyyymmddhhmmss 포맷으로 현재날짜시간을 출력해주는 함수
-                function getCurrentDateTime() {
-                    // 현재 날짜 시간 구하기
-                    const now = new Date();
-                    // 년
-                    const year = now.getFullYear();
-                    // 월
-                    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                    // 일
-                    const day = now.getDate().toString().padStart(2, '0');
-                    // 시
-                    const hours = now.getHours().toString().padStart(2, '0');
-                    // 분
-                    const minutes = now.getMinutes().toString().padStart(2, '0');
-                    // 초
-                    const seconds = now.getSeconds().toString().padStart(2, '0');
-                    return year + month + day + hours + minutes + seconds;
-                }
-
-                // 데이터 수집
-                const data = {
-                    pixel_distance: pixelDistance,
-                    real_distance: realDistance,
-                    unit: unit,
-                    scale_factor: scaleFactor,
-                    image_width: imageWidth,
-                    image_height: imageHeight,
-                    origin: {
-                        x: originX,
-                        y: originY,
-                        theta: 0.0
-                    }, // 원점 좌표 (좌측 하단 중심)
-                    points: points, // 포인트 좌표도 포함
-                    timestamp: getCurrentDateTime()
-                };
-                
-                console.log('flask 서버로 전송할 데이터:', data);
-                
-                // 서버에 요청
-                fetch('/guideline/export_yaml', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                })
-                .then(response => {
-                    console.log('응답 상태:', response.status);
-                    if (response.ok) {
-                        return response.blob();
-                    }
-
-                    // 응답이 HTML인지 확인
-                    const contentType = response.headers.get('content-type');
-                    if (contentType && contentType.includes('text/html')) {
-                        throw new Error('flask 서버의 응답은 HTML입니다. YAML 내보내기 실패');
+                    // 숫자 선택 또는 직접 입력 값 가져오기
+                    let realDistance;
+                    
+                    if (numberDropdown && numberDropdown.value !== 'manual') {
+                        realDistance = parseFloat(numberDropdown.value);
+                    } else if (manualInput && manualInput.value) {
+                        realDistance = parseFloat(manualInput.value);
+                    } else {
+                        alert('실제 거리 값을 선택하거나 입력하세요.');
+                        return;
                     }
                     
-                    // JSON 응답이면 에러 메시지 추출 시도
-                    return response.text().then(text => {
-                        try {
-                            const errData = JSON.parse(text);
-                            throw new Error(errData.error || 'YAML 내보내기 실패');
-                        } catch (e) {
-                            throw new Error('응답 처리 중 오류: ' + text.substring(0, 100));
+                    // 픽셀 거리 값과 실제 거리 값 유효성 검증
+                    if (isNaN(pixelDistance) || pixelDistance <= 0) {
+                        alert('유효한 픽셀 거리가 없습니다. 두 점을 선택했는지 확인하세요.');
+                        return;
+                    }
+                    if (isNaN(realDistance) || realDistance <= 0) {
+                        alert('유효한 실제 거리 값을 입력하세요.');
+                        return;
+                    }
+                    
+                    // 단위 가져오기
+                    const unit = document.getElementById('unitDropdown').value;
+
+                    // 소수점 형식 지정 함수
+                    function formatNumber(num, decimals = 6) {
+                        return parseFloat(parseFloat(num).toFixed(decimals));
+                    }
+
+                    // 스케일 계산 (단위 변환 필요 - mm, cm, km를 m로 변환)
+                    let convertedDistance = realDistance;
+                    switch(unit) {
+                        case 'mm':
+                            convertedDistance = formatNumber(realDistance / 1000);
+                            break;
+                        case 'cm':
+                            convertedDistance = formatNumber(realDistance / 100);
+                            break;
+                        case 'km':
+                            convertedDistance = formatNumber(realDistance * 1000);
+                            break;
+                    }
+                    
+                    const scaleFactor = formatNumber(convertedDistance / pixelDistance); // 해상도 계산 (m / pixel)
+                    
+                    // origin 계산
+                    const originX = formatNumber(-(imageWidth * scaleFactor) / 2);
+                    const originY = formatNumber(-(imageHeight * scaleFactor) / 2);
+
+                    // https://hianna.tistory.com/857
+                    // yyyymmddhhmmss 포맷으로 현재날짜시간을 출력해주는 함수
+                    function getCurrentDateTime() {
+                        // 현재 날짜 시간 구하기
+                        const now = new Date();
+                        // 년
+                        const year = now.getFullYear();
+                        // 월
+                        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                        // 일
+                        const day = now.getDate().toString().padStart(2, '0');
+                        // 시
+                        const hours = now.getHours().toString().padStart(2, '0');
+                        // 분
+                        const minutes = now.getMinutes().toString().padStart(2, '0');
+                        // 초
+                        const seconds = now.getSeconds().toString().padStart(2, '0');
+                        return year + month + day + hours + minutes + seconds;
+                    }
+
+                    // 데이터 수집
+                    const data = {
+                        pixel_distance: pixelDistance,
+                        real_distance: realDistance,
+                        unit: unit,
+                        scale_factor: scaleFactor,
+                        image_width: imageWidth,
+                        image_height: imageHeight,
+                        origin: {
+                            x: originX,
+                            y: originY,
+                            theta: 0.0
+                        }, // 원점 좌표 (좌측 하단 중심)
+                        points: points, // 포인트 좌표도 포함
+                        timestamp: getCurrentDateTime()
+                    };
+                    
+                    console.log('flask 서버로 전송할 데이터:', data);
+                    
+                    // 서버에 요청
+                    fetch('/guideline/generate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // 메인 콘텐츠 숨기기
+                        document.getElementById('mainContent').style.display = 'none';
+
+                        // 성공 메시지 표시 및 다운로드 버튼 활성화
+                        document.getElementById('fileGenerationComplete').style.display = 'block';
+
+                        if(!data.YAML && !data.PGM ) {
+                            alert('파일 생성 중 오류가 발생했습니다: ' + data.error);
+                        } else {
+                            if (!data.YAML) {
+                                document.getElementById('downloadYAML').style.display = 'none';
+                                alert('YAML 파일 생성 중 오류가 발생했습니다: ' + data.error)
+                            }
+                            if (!data.PGM) {
+                                document.getElementById('downloadPGM').style.display = 'none';
+                                alert('PGM 파일 생성 중 오류가 발생했습니다: ' + data.error)
+                            }
                         }
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                        alert('파일 생성 요청 중 오류가 발생했습니다.');
                     });
-                })
-                .then(blob => {
-                    // 다운로드 링크 생성
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = 'map.yaml';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('YAML 내보내기 중 오류가 발생했습니다: ' + error.message);
                 });
             }
         }
