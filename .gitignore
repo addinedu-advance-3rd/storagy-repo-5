@@ -1,9 +1,15 @@
-# 특정 디렉토리 무시
-/node_modules/
-/.venv/
-/__pycache__/
-/.cache/
-/.git/
+# 모든 레벨에서 특정 디렉토리 무시
+node_modules/
+.venv/
+__pycache__/
+.cache/
+.git/
+# 또는 이렇게도 설정 가능
+# **/node_modules/
+# **/.venv/
+# **/__pycache__/
+# **/.cache/
+# **/.git/
 
 # 임시 파일
 *.tmp
@@ -17,6 +23,6 @@ config.local.ini
 .env.local
 secrets.json
 
-# uploads 디렉토리의 모든 파일 무시, 단 "!경로" 파일은 유지
-/static/processed/*
-!/static/processed/45057754.jpg.txt
+# processed 디렉토리 내 모든 파일과 디렉토리 무시, 단 "!경로" 파일은 유지
+# /static/processed/**/*
+# !/static/processed/45057754.jpg.txt

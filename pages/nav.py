@@ -12,6 +12,8 @@ from nav2_msgs.action import NavigateToPose
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from action_msgs.msg import GoalStatus
 
+from config import YAML_PATH, MAP_PNG_PATH
+
 nav_bp = Blueprint('nav', __name__, template_folder='templates')
 
 # 전역 변수들
@@ -20,26 +22,20 @@ robot_path_data = []
 current_target_data = None
 current_user_gps = None
 
-YAML_PATH = "static/map.yaml"
 map_data = {}
-map_image_path = ""
 
 def load_map():
-    global map_data, map_image_path
+    global map_data
 
-    # 현재 스크립트 파일의 디렉토리 경로 가져오기
-    current_dir = os.path.dirname(__file__)  
-    yaml_path = os.path.join(current_dir, "static/map.yaml")  # 상대 경로로 YAML 파일 설정
-
-    if not os.path.exists(yaml_path):
-        print(f"❌ YAML 파일을 찾을 수 없습니다: {yaml_path}")
+    if not os.path.exists(YAML_PATH):
+        print(f"❌ YAML 파일을 찾을 수 없습니다: {YAML_PATH}")
         return
 
-    with open(yaml_path, "r") as file:
+    with open(YAML_PATH, "r") as file:
         map_config = yaml.safe_load(file)
 
     # PGM 파일 경로 설정 (YAML 파일 기준 상대 경로)
-    pgm_path = os.path.join(os.path.dirname(yaml_path), map_config["image"])
+    pgm_path = os.path.join(os.path.dirname(YAML_PATH), map_config["image"])
     if not os.path.exists(pgm_path):
         print(f"❌ PGM 파일을 찾을 수 없습니다: {pgm_path}")
         return
@@ -47,12 +43,11 @@ def load_map():
     print(f"📂 PGM 파일 로드: {pgm_path}")
     pgm_image = cv2.imread(pgm_path, cv2.IMREAD_UNCHANGED)  # PGM 파일 읽기
 
-    # PNG 파일 저장 경로 설정 (현재 디렉토리 기준 상대 경로)
-    map_image_path = os.path.join(current_dir, "static/map.png")
     height, width = pgm_image.shape[:2]
-    cv2.imwrite(map_image_path, pgm_image)  # PNG 파일로 저장
 
-    print(f"✅ PNG 맵 생성 완료: {map_image_path}")
+    cv2.imwrite(MAP_PNG_PATH, pgm_image)  # PNG 파일로 저장
+    print(f"✅ PNG 맵 생성 완료: {MAP_PNG_PATH}")
+
     map_data = {
         "resolution": map_config["resolution"],
         "origin": map_config["origin"],
@@ -174,11 +169,10 @@ def nav_index():
 
 @nav_bp.route('/get_map_image', methods=['GET'])
 def get_map_image():
-    global map_image_path
     # 파일 경로가 올바른지 확인
-    if not os.path.exists(map_image_path):
+    if not os.path.exists(MAP_PNG_PATH):
         return "맵 이미지 파일을 찾을 수 없습니다.", 404
-    return send_file(map_image_path, mimetype='image/png')
+    return send_file(MAP_PNG_PATH, mimetype='image/png')
 
 @nav_bp.route('/set_target', methods=['POST'])
 def set_target():
@@ -230,20 +224,14 @@ def get_user_gps():
          return jsonify({})
     return jsonify(current_user_gps)
 
+# @nav_bp.route('/stop_nav', methods=['POST', 'GET'])
+# def stop_nav_route():
+#     stop_nav()
+#     return "Navigation stopped."
+
 # ---------------------------
 # ROS 관련 기능
 # ---------------------------
-def start_ros():
-    """ROS 관련 스레드를 시작하는 함수"""
-    def ros_spin():
-        global nav2_client
-        rclpy.init()
-        nav2_client = Nav2Client()
-        PoseSubscriber(nav2_client)
-        rclpy.spin(nav2_client)
-        nav2_client.destroy_node()
-        rclpy.shutdown()
-    threading.Thread(target=ros_spin, daemon=True).start()
 
 class Nav2Client(Node):
     def __init__(self):
@@ -296,5 +284,8 @@ class PoseSubscriber:
             robot_path_data.append({'x': x, 'y': y})
 
 def init_nav():
-    load_map()
-    start_ros()
+    global nav2_client
+    load_map()  # 맵 로드
+    nav2_client = Nav2Client()  # Nav2Client 노드 생성
+    PoseSubscriber(nav2_client)  # 구독자 등록
+    return nav2_client

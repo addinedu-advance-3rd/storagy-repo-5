@@ -12,29 +12,20 @@ import yaml
 import io
 import traceback
 
+from config import UPLOADS_DIR, MAP_DIR, ALLOWED_IMAGE_EXTENSIONS
 
-# Blueprint 생성
 guideline_bp = Blueprint('guideline', __name__, template_folder='templates')
 
-# 업로드 및 처리 디렉토리 설정
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-PROCESSED_FOLDER = os.path.join('static', 'processed')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(PROCESSED_FOLDER, exist_ok=True)
-
-# 허용된 파일 확장자
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'tif', 'tiff'}
-
+# 파일 확장자 확인 함수
 def allowed_file(filename):
-    """파일 확장자 확인 함수"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 # 메모리 내 파일 객체를 저장할 딕셔너리와 만료 시간 추적
 MEMORY_FILES = {}
 FILE_EXPIRY = {}  # 파일 만료 시간 추적
-EXPIRY_TIME = 3600  # 1시간 후 만료
+EXPIRY_TIME = 3600  # 1시간
 
-# 만료된 파일 정리 함수
+# 메모리 내 만료된 파일 정리 함수
 def cleanup_expired_files():
     current_time = time.time()
     expired_keys = [k for k, v in FILE_EXPIRY.items() if current_time > v]
@@ -43,65 +34,11 @@ def cleanup_expired_files():
             del MEMORY_FILES[key]
         del FILE_EXPIRY[key]
 
-
-@guideline_bp.route('/', methods=['GET', 'POST'])
-def guideline():
-    """도면 업로드 및 OCR 및 거리 측정 처리"""
-    if request.method == 'POST':
-        # 업로드된 파일 처리
-        if 'file' not in request.files:
-            return jsonify({"error": "No file part"}), 400
-        
-        file = request.files['file']
-
-        if file.filename == '':
-            return jsonify({"error": "No selected file"}), 400
-
-        if file and allowed_file(file.filename):
-            # 파일 저장
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
-            file.save(filepath)
-
-            # OCR 처리
-            image = Image.open(filepath)
-            ocr_data = process_image(image)
-
-            # 처리된 데이터 저장
-            # processed_filename = f"{filename}.txt"
-            processed_filename = "map.txt"
-            processed_filepath = os.path.join(PROCESSED_FOLDER, processed_filename)
-            with open(processed_filepath, 'w') as f:
-                f.write(ocr_data)
-
-            # OCR 데이터에서 숫자 추출
-            extracted_numbers = extract_numbers(ocr_data)
-
-            # 업로드된 이미지와 OCR 데이터를 렌더링에 전달
-            return render_template(
-                'guideline.html',
-                uploaded_image_url=f'/static/uploads/{filename}',
-                ocr_data=ocr_data,
-                extracted_numbers=extracted_numbers
-            )
-
-        return jsonify({"error": "Invalid file type"}), 400
-
-    # GET 요청 시 기본 페이지 렌더링
-    return render_template(
-        'guideline.html',
-        uploaded_image_url=None,
-        ocr_data=None,
-        extracted_numbers=None
-    )
-
+# 이미지 OCR 처리 함수
 def process_image(image):
-    """이미지 OCR 처리 함수"""
     try:
-        """
-        OCR이 작은 텍스트나 기호도 추출할 수 있도록 
-        이미지를 고해상도(300 DPI 이상)로 리샘플링하고 노이즈를 제거한다.
-        """
+        # OCR이 작은 텍스트나 기호도 추출할 수 있도록 
+        # 이미지를 고해상도(300 DPI 이상)로 리샘플링하고 노이즈를 제거한다.
         image_resized = image.resize((image.width * 2, image.height * 2), Image.Resampling.LANCZOS)
         gray = cv2.cvtColor(np.array(image_resized), cv2.COLOR_BGR2GRAY)
         _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
@@ -117,19 +54,66 @@ def process_image(image):
         return ocr_result
     
     except Exception as e:
-
+        print(f"OCR 처리 중 오류 발생: {e}")
         return f"OCR 처리 중 오류 발생: {e}"
 
+# OCR 결과 숫자 추출 함수
 def extract_numbers(ocr_text):
-    """OCR 결과에서 숫자 추출"""
-    # 정규표현식을 사용하여 숫자 추출
-    numbers = re.findall(r'\d+\.?\d*', ocr_text)  # 정수와 소수를 포함한 숫자 추출
+    numbers = re.findall(r'\d+\.?\d*', ocr_text)  # 정규표현식으로 정수와 소수를 포함한 숫자 추출
     return [float(num) if '.' in num else int(num) for num in numbers]
 
+# (1) 도면 업로드 및 OCR 및 거리 측정 처리
+@guideline_bp.route('/', methods=['GET', 'POST'])
+def guideline():
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return jsonify({"error": "POST request에 파일 부분이 없습니다."}), 400
+        
+        file = request.files['file']
 
+        if file.filename == '':
+            return jsonify({"error": "선택된 파일이 없습니다."}), 400
+
+        if file and allowed_file(file.filename):
+            # 파일 저장
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOADS_DIR, filename)
+            file.save(filepath)
+
+            # OCR 처리
+            image = Image.open(filepath)
+            ocr_data = process_image(image)
+
+            # 처리된 데이터 저장
+            processed_filename = "map.txt"
+            processed_filepath = os.path.join(MAP_DIR, processed_filename)
+            with open(processed_filepath, 'w') as f:
+                f.write(ocr_data)
+
+            # OCR 데이터에서 숫자 추출
+            extracted_numbers = extract_numbers(ocr_data)
+
+            # 업로드된 이미지와 OCR 데이터를 렌더링에 전달
+            return render_template(
+                'guideline.html',
+                uploaded_image_url=filepath,
+                ocr_data=ocr_data,
+                extracted_numbers=extracted_numbers
+            )
+
+        return jsonify({"error": "잘못된 파일 형식입니다."}), 400
+
+    # GET 요청 시 기본 페이지 렌더링
+    return render_template(
+        'guideline.html',
+        uploaded_image_url=None,
+        ocr_data=None,
+        extracted_numbers=None
+    )
+
+# (2) YAML 파일 및 PGM 파일 생성
 @guideline_bp.route('/generate', methods=['POST'])
 def generate_files():
-    """YAML 파일 및 PGM 파일 생성"""
     # YAML 파일 생성 위한 FlowList 클래스 정의 (YAML 리스트 포맷팅용)
     class FlowList(list):
         pass
@@ -169,6 +153,7 @@ def generate_files():
             "free_thresh": 0.25,  # 자유 공간(이동 가능) 임계값
             "negate": 0  # 색상 반전 여부 (0이면 흰색=이동 가능, 1이면 흑색 반전)
         }
+
         # YAML 파일 생성 (메모리에만 저장)
         yaml_content = yaml.dump(yaml_data, default_flow_style=False, sort_keys=False)
         yaml_file = io.BytesIO(yaml_content.encode('utf-8'))
@@ -236,7 +221,7 @@ def generate_files():
     response.set_cookie('user_key', user_key, max_age=EXPIRY_TIME)
     return response
 
-
+# (3-1) YAML 파일 다운로드
 @guideline_bp.route('/download/yaml')
 def download_yaml():
     try:
@@ -251,7 +236,7 @@ def download_yaml():
         yaml_file.seek(0)
         
         # 로컬 리포지토리 내에 미리 저장
-        yaml_path = os.path.join(PROCESSED_FOLDER, 'map.yaml')
+        yaml_path = os.path.join(MAP_DIR, 'map.yaml')
         with open(yaml_path, 'wb') as f:  # 바이너리 모드로 열기
             f.write(yaml_file.getvalue())  # BytesIO의 내용을 가져와 쓰기
 
@@ -269,7 +254,7 @@ def download_yaml():
         print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-
+# (3-2) PGM 파일 다운로드
 @guideline_bp.route('/download/pgm')
 def download_pgm():
     try:
@@ -284,7 +269,7 @@ def download_pgm():
         pgm_file.seek(0)
 
         # 로컬 리포지토리 내에 미리 저장
-        pgm_path = os.path.join(PROCESSED_FOLDER, 'map.pgm')
+        pgm_path = os.path.join(MAP_DIR, 'map.pgm')
         with open(pgm_path, 'wb') as f:
             f.write(pgm_file.getvalue())
 
