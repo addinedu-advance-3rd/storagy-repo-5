@@ -16,7 +16,7 @@ from nav2_msgs.action import NavigateToPose
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from action_msgs.msg import GoalStatus
 
-from robot.path_planning import generate_trajectory
+from robot.path_planning import generate_trajectory, init_pose_sub
 from config import YAML_PATH, MAP_PNG_PATH
 
 remap_bp = Blueprint('remap', __name__, template_folder='templates')
@@ -62,9 +62,10 @@ class Nav2TrajectorySender(Node):
         super().__init__('nav2_trajectory_sender')
         self._action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
         self.map_data = self.load_map_yaml()
-        self.trajectory_points = self.load_trajectory()
+        self.trajectory_points = []
         self.current_index = 0
         self.revisited_paths = set()
+        init_pose_sub()
         
         total_waypoints = len(self.trajectory_points)
         remaining_waypoints = total_waypoints - self.current_index
@@ -72,9 +73,6 @@ class Nav2TrajectorySender(Node):
         
         # /amcl_pose 토픽을 구독하여 현재 위치 업데이트
         self.create_subscription(PoseWithCovarianceStamped, '/amcl_pose', self.pose_callback, 10)
-        
-        if not self.trajectory_points:
-            self.get_logger().info("❌ trajectory 좌표를 찾을 수 없습니다.")
 
         # 장애물 확인
         self.latest_costmap = None
@@ -132,7 +130,7 @@ class Nav2TrajectorySender(Node):
 
     def load_trajectory(self):
         points = []
-        tmp = generate_trajectory()
+        msg, tmp = generate_trajectory()
         for x, y, theta in tmp:
             x_world, y_world = self.pixel_to_world(float(x), float(y))
             points.append((x_world, y_world, theta))
@@ -250,6 +248,7 @@ html_template = '''
     </div>
     <p id="coords">현재 로봇 위치:</p>
     <p id="waypoints_info">총 Waypoints: 0, 남은 Waypoints: 0</p>
+    <button id="generatePathBtn">경로 생성</button>
     <button id="nextGoalBtn">재매핑 시작</button>
     <script>
         const resolution = {{ map_data.resolution }};
@@ -271,7 +270,21 @@ html_template = '''
             })
             .then(response => response.json())
             .then(data => {
-                alert("결과: " + JSON.stringify(data));
+                alert("재매핑 요청 결과: " + JSON.stringify(data.message));
+            })
+            .catch(err => {
+                console.error(err);
+            });
+        });
+
+        document.getElementById('generatePathBtn').addEventListener('click', function() {
+            alert("로봇의 현재 위치를 설정해주세요. 현재 위치를 기반으로 경로가 생성됩니다.");
+            fetch('/remap/generate_path', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("경로 생성 요청 결과: " + JSON.stringify(data.message));
             })
             .catch(err => {
                 console.error(err);
@@ -385,16 +398,37 @@ def get_trajectory_points():
     global trajectory_points
     return jsonify(trajectory_points)
 
+@remap_bp.route('/generate_path', methods=['POST'])
+def generate_path():
+    global total_waypoints, remaining_waypoints, trajectory_points, robot_path_data
+
+    if remaining_waypoints == 0:
+        robot_path_data = []
+        points = []
+        msg, tmp = generate_trajectory()
+        for x, y, theta in tmp:
+            x_world, y_world = remap_node.pixel_to_world(float(x), float(y))
+            points.append((x_world, y_world, theta))
+        trajectory_points = points
+        remap_node.trajectory_points = trajectory_points
+        remap_node.current_index = 0
+        total_waypoints = len(remap_node.trajectory_points)
+        remaining_waypoints = total_waypoints - remap_node.current_index
+    else:
+        msg = "현재 remapping 진행중입니다. remapping이 끝나고 경로 생성해주세요"
+    return jsonify({'status': '경로 생성 요청 완료!', 'message': msg})
+
 @remap_bp.route('/send_next_goal', methods=['POST'])
 def send_next_goal_route():
-    global total_waypoints, remaining_waypoints, trajectory_points
     if remap_node is None:
         return jsonify({'status': 'Node not ready'}), 500
-    
-    remap_node.current_index = 0
-    trajectory_points = remap_node.load_trajectory()
-    remap_node.send_next_goal()
-    return jsonify({'status': 'Next goal triggered!'})
+    if remaining_waypoints == total_waypoints or remaining_waypoints == 0:
+        robot_path_data = []
+        remap_node.send_next_goal()
+        msg = "remapping 시작합니다"
+    else:
+        msg = "현재 remapping 진행중입니다. remapping이 끝나고 해주세요"
+    return jsonify({'status': '재매핑 요청 완료', 'message': msg})
 
 def init_remap():
     global remap_node

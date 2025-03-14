@@ -1,4 +1,4 @@
-from flask import Flask, render_template, render_template_string
+from flask import Flask, render_template
 from pages import tracking
 from pages.guideline import guideline_bp
 from pages.nav import nav_bp, init_nav
@@ -13,18 +13,13 @@ app = Flask(__name__)
 app.register_blueprint(nav_bp, url_prefix='/nav')
 app.register_blueprint(guideline_bp, url_prefix='/guideline')
 app.register_blueprint(remap_bp, url_prefix='/remap')
+app.register_blueprint(tracking.tracking_bp, url_prefix='/tracking')
 
 @app.route('/')
 def index():
     return render_template('main_server.html')
 
-@app.route('/tracking')
-def tracking_route():
-    tracking.start_tracking()
-    return "Tracking function triggered."
-
 if __name__ == '__main__':
-
     # nav 관련 초기화 (맵 로드 및 ROS 스레드 시작)
     rclpy.init()
 
@@ -40,6 +35,8 @@ if __name__ == '__main__':
     # ROS executor를 별도 스레드에서 실행 (blocking하지 않도록)
     ros_thread = threading.Thread(target=executor.spin, daemon=True)
     ros_thread.start()
+
+    tracking.start_tracking()
 
     # Flask 웹 서버 실행 (메인 스레드)
     app.run(host="0.0.0.0", port=8000)

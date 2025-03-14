@@ -1,0 +1,12 @@
+.vscode/
+.DS_Store
+__pycache__/
+*-checkpoint.ipynb
+.venv
+*.egg*
+build/*
+_C.*
+outputs/*
+checkpoints/sam2/*.pt
+checkpoints/sam2.1/*.pt
+checkpoints/yolo/*.pt
