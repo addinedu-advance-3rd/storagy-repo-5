@@ -12,7 +12,7 @@ from nav2_msgs.action import NavigateToPose
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from action_msgs.msg import GoalStatus
 
-from config import YAML_PATH, MAP_PNG_PATH
+from utils.config import YAML_PATH, MAP_PNG_PATH
 
 nav_bp = Blueprint('nav', __name__, template_folder='templates')
 

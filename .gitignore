@@ -4,10 +4,11 @@ ai/checkpoint_a2b_inorm/model_epoch400.pth
 ai/log_a2b_inorm/train/events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.0
 ai/log_a2b_inorm/val/events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.1
 
-# 특정 디렉토리 내 모든 파일과 디렉토리 무시
-/ai/result/**/*
-/static/debug/**/*
-/static/map/**/*
+# 특정 디렉토리 내 모든 파일과 디렉토리 무시 (단 "!경로"의 파일 및 하위 디렉토리는 유지)
+# /ai/result/**/*
+# /static/debug/**/*
+# /static/map/*
+# !/static/map/original/
 
 # 모든 레벨에서 특정 디렉토리 무시
 node_modules/
@@ -33,7 +34,3 @@ config.local.ini
 .env
 .env.local
 secrets.json
-
-# processed 디렉토리 내 모든 파일과 디렉토리 무시, 단 "!경로" 파일은 유지
-# /static/processed/**/*
-# !/static/processed/45057754.jpg.txt

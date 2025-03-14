@@ -5,7 +5,13 @@ import torch
 import torch.nn as nn
 
 import matplotlib.pyplot as plt
-from util import *
+try:
+    print("ai/dataset.py: from ai.~ import * 로 시도합니다.")
+    from ai.util import *
+except Exception as e:
+    print(e)
+    print("dataset.py: from ~ import * 로 시도합니다.")
+    from util import *
 
 import cairosvg
 from PIL import Image

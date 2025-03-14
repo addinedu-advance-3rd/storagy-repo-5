@@ -8,9 +8,17 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from model import *
-from dataset import *
-from util import *
+try:
+    print("ai/train.py: from ai.~ import * 로 시도합니다.")
+    from ai.model import *
+    from ai.dataset import *
+    from ai.util import *
+except Exception as e:
+    print(e)
+    print("train.py: from ~ import * 로 시도합니다.")
+    from model import *
+    from dataset import *
+    from util import *
 
 import matplotlib.pyplot as plt
 
@@ -138,6 +146,7 @@ def train(args):
     ## 그밖에 부수적인 functions 설정하기
     fn_tonumpy = lambda x: x.to('cpu').detach().numpy().transpose(0, 2, 3, 1)
     fn_denorm = lambda x, mean, std: (x * std) + mean
+    # fn_denorm = lambda x, mean, std: np.clip((x * std) + mean, 0, 1)
     fn_class = lambda x: 1.0 * (x > 0.5)
 
     cmap = None
@@ -394,20 +403,25 @@ def test(args):
     print("result dir: %s" % result_dir)
 
     print("device: %s" % device)
-
+    result_dir_test = result_dir  # 직접 result_dir (즉, /static/map)에 저장
+    if not os.path.exists(result_dir_test):
+        os.makedirs(result_dir_test)
+    """
     ## 디렉토리 생성하기
     result_dir_test = os.path.join(result_dir, 'test')
 
     if not os.path.exists(result_dir_test):
         os.makedirs(os.path.join(result_dir_test, 'png'))
         os.makedirs(os.path.join(result_dir_test, 'numpy'))
-
+    """
     ## 네트워크 학습하기
     if mode == "test":
         transform_test = transforms.Compose([Normalization(mean=0.5, std=0.5)])
         # transform_test = transforms.Compose([Resize(shape=(nx, ny, nch)), Normalization(mean=0.5, std=0.5)])
 
-        dataset_test = Dataset(data_dir=os.path.join(data_dir, 'test'), transform=transform_test, task=task, opts=opts, mode=mode)
+        # test 디렉토리 추가 없이 직접 data_dir 사용
+        dataset_test = Dataset(data_dir=data_dir, transform=transform_test, task=task, opts=opts, mode=mode)
+        # dataset_test = Dataset(data_dir=os.path.join(data_dir, 'test'), transform=transform_test, task=task, opts=opts, mode=mode)
         loader_test = DataLoader(dataset_test, batch_size=batch_size, shuffle=False, num_workers=8)
 
         # 그밖에 부수적인 variables 설정하기
@@ -469,11 +483,11 @@ def test(args):
 
                     # 🔹 큰 이미지를 패치들로 분할
                     input_patches, positions, img_shape = split_image_into_patches(input_np, patch_size=256)
-
+                    """
                     # 디렉토리가 없으면 생성
                     if not os.path.exists(os.path.join(result_dir_test, 'png')):
                         os.makedirs(os.path.join(result_dir_test, 'png'))
-
+                    """
                     output_patches = []
                     for i, patch in enumerate(input_patches):
                         patch_tensor = torch.from_numpy(patch).permute(2, 0, 1).unsqueeze(0).to(device).float()
@@ -493,7 +507,8 @@ def test(args):
 
                     # 🔹 결과 저장
                     output_image = np.clip(output_image, 0, 1)
-                    plt.imsave(os.path.join(result_dir_test, 'png', '%04d_output.png' % batch), output_image)
+                    plt.imsave(os.path.join(result_dir_test, 'map.png'), output_image)
+                    # plt.imsave(os.path.join(result_dir_test, 'png', '%04d_output.png' % batch), output_image)
 
                 else:
                     output = netG(input)
@@ -512,17 +527,23 @@ def test(args):
 
                         id = batch  # 배치 1개일 경우 ID 그대로 사용
 
+                        np.save(os.path.join(result_dir_test, '%04d_input.npy' % id), input_np)
+                        np.save(os.path.join(result_dir_test, '%04d_output.npy' % id), output_np)
+                        """
                         np.save(os.path.join(result_dir_test, 'numpy', '%04d_input.npy' % id), input_np)
                         np.save(os.path.join(result_dir_test, 'numpy', '%04d_output.npy' % id), output_np)
-
+                        """
                         input_np = np.clip(input_np, a_min=0, a_max=1)
                         output_np = np.clip(output_np, a_min=0, a_max=1)
 
                         output_np = preprocess_image(output_np)
-
+                        
+                        plt.imsave(os.path.join(result_dir_test, 'map_input.png'), input_np)
+                        plt.imsave(os.path.join(result_dir_test, 'map.png'), output_np)
+                        """
                         plt.imsave(os.path.join(result_dir_test, 'png', '%04d_input.png' % id), input_np)
                         plt.imsave(os.path.join(result_dir_test, 'png', '%04d_output.png' % id), output_np)
-
+                        """
                     else:  
                         # 🔹 배치 크기가 2 이상일 경우 기존 방식
                         for j in range(batch_size_current):
@@ -531,17 +552,23 @@ def test(args):
                             input_np = input_np[j]
                             output_np = output_np[j]
 
+                            np.save(os.path.join(result_dir_test, '%04d_input.npy' % id), input_np)
+                            np.save(os.path.join(result_dir_test, '%04d_output.npy' % id), output_np)
+                            """
                             np.save(os.path.join(result_dir_test, 'numpy', '%04d_input.npy' % id), input_np)
                             np.save(os.path.join(result_dir_test, 'numpy', '%04d_output.npy' % id), output_np)
-
+                            """
                             input_np = np.clip(input_np, a_min=0, a_max=1)
                             output_np = np.clip(output_np, a_min=0, a_max=1)
 
                             output_np = preprocess_image(output_np)
 
+                            plt.imsave(os.path.join(result_dir_test, 'map_input.png'), input_np)
+                            plt.imsave(os.path.join(result_dir_test, 'map.png'), output_np)
+                            """
                             plt.imsave(os.path.join(result_dir_test, 'png', '%04d_input.png' % id), input_np)
                             plt.imsave(os.path.join(result_dir_test, 'png', '%04d_output.png' % id), output_np)
-
+                            """
 
 def split_image_into_patches(image, patch_size=256):
     """ 큰 이미지를 patch_size × patch_size 크기로 자르는 함수 """

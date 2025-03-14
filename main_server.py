@@ -6,6 +6,16 @@ from pages.remap import remap_bp, init_remap
 import rclpy
 from rclpy.executors import MultiThreadedExecutor
 import threading
+import logging
+import os, sys
+from utils.download_large_files import download_models
+
+# 프로젝트 루트(storagy-repo-5/)를 sys.path에 추가
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -19,7 +29,30 @@ app.register_blueprint(tracking.tracking_bp, url_prefix='/tracking')
 def index():
     return render_template('main_server.html')
 
+def check_required_files():
+    """필요한 파일들이 존재하는지 확인하고 없으면 다운로드 시작"""
+    files_to_check = [
+        'SAM2_streaming/configs/sam2/sam2_hiera_tiny.pt',
+        'ai/checkpoint_a2b_inorm/model_epoch400.pth',
+        'ai/log_a2b_inorm/train/events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.0',
+        'ai/log_a2b_inorm/val/events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.1'
+    ]
+    
+    missing_files = [f for f in files_to_check if not os.path.exists(f)]
+    
+    if missing_files:
+        print(f"로컬 리포지토리에 없는 대용량 파일들을 다운로드합니다: {missing_files}")
+        logger.info(f"로컬 리포지토리에 없는 대용량 파일들을 다운로드합니다: {missing_files}")
+        # HuggingFace 공개 저장소에서 직접 다운로드
+        download_models()
+    else:
+        print("필요한 모든 대용량 파일이 이미 있습니다. 다음 단계로 넘어갑니다.")
+        logger.info("필요한 모든 대용량 파일이 이미 있습니다. 다음 단계로 넘어갑니다.")
+
 if __name__ == '__main__':
+    # 파일 확인 및 필요시 다운로드 시작
+    check_required_files()
+
     # nav 관련 초기화 (맵 로드 및 ROS 스레드 시작)
     rclpy.init()
 

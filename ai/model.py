@@ -4,7 +4,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from layer import *
+try:
+    print("ai/model.py: from ai.~ import * 로 시도합니다.")
+    from ai.layer import *
+except Exception as e:
+    print(e)
+    print("model.py: from ~ import * 로 시도합니다.")
+    from layer import *
 
 import torch.nn.functional as F
 

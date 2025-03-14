@@ -9,7 +9,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseWithCovarianceStamped
 
-from config import YAML_PATH, MAP_PNG_PATH, DEBUG_IMG_DIR
+from utils.config import YAML_PATH, MAP_PNG_PATH, DEBUG_IMG_DIR
 
 os.makedirs(DEBUG_IMG_DIR, exist_ok=True)
 

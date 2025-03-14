@@ -17,7 +17,7 @@ from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from action_msgs.msg import GoalStatus
 
 from robot.path_planning import generate_trajectory, init_pose_sub
-from config import YAML_PATH, MAP_PNG_PATH
+from utils.config import YAML_PATH, MAP_PNG_PATH
 
 remap_bp = Blueprint('remap', __name__, template_folder='templates')
 
