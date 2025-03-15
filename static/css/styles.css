@@ -1,0 +1,130 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    background-color: #f4f4f4;
+    font-family: 'NanumGothic', sans-serif;
+    text-align: center;
+    padding: 20px;
+}
+
+/* 중앙 정렬 */
+.container {
+    text-align: center;
+}
+
+h1 {
+    font-size: 28px;
+    padding: 10px;
+    font-family: 'NanumGothicExtraBold', sans-serif;
+    letter-spacing: 1px;
+    color: black;
+}
+
+/* 안내 문구 스타일 */
+#instruction {
+    font-size: 18px;
+    color: #444;
+    margin-bottom: 20px;
+    font-family: 'NanumGothicBold', sans-serif;
+}
+
+/* 버튼 스타일 */
+button {
+    margin: 15px;
+    padding: 15px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(45deg, #007BFF, #00d4ff);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transform: scale(1); /* 기본 크기 */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* 크기 및 그림자 애니메이션 */
+}
+
+button:hover {
+    background: linear-gradient(45deg, #0056b3, #0096c7);
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+button:active {
+    transform: translateY(2px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.button-container {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+/* 맵 표시 */
+#mapContainer {
+    position: relative;
+    display: inline-block;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    background-color: white;
+    /* padding: 20px; */
+    margin: 20px;
+}
+
+#mapImage {
+    display: block;
+}
+
+#overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+}
+
+#coords, #waypoints_info {
+    font-size: 18px;
+    font-weight: bold;
+    color: #444;
+    margin-top: 15px;
+    font-family: 'NanumGothicBold', sans-serif;
+}
+
+/* 카메라 화면 */
+#videoContainer {
+    position: relative;
+    width: 100%;              /* 부모 컨테이너의 너비에 맞게 */
+    max-width: 640px;         /* 최대 너비는 원래 크기 유지 */
+    aspect-ratio: 4 / 3;      /* 640:480 = 4:3 비율 유지 */
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    margin-bottom: 20px;
+}
+#videoFeed {
+    display: none;
+    max-width: 100%;
+    max-height: 100%;
+}
+#videoCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+#noCameraMessage {
+    position: absolute;
+    font-size: 20px;
+    color: #888;
+    display: block;
+    font-family: 'NanumGothicBold', sans-serif;
+}

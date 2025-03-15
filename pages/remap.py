@@ -7,7 +7,7 @@ import cv2
 import re
 import heapq
 import subprocess
-from flask import Flask, jsonify, render_template_string, send_file, request, Blueprint
+from flask import Flask, jsonify, render_template, send_file, request, Blueprint
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -151,7 +151,6 @@ class Nav2TrajectorySender(Node):
 
     def send_next_goal(self):
         global remaining_waypoints
-        print(self.trajectory_points)
         if self.current_index >= len(self.trajectory_points):
             self.get_logger().info("✅ 모든 목표를 완료했습니다.")
             remaining_waypoints = 0
@@ -167,7 +166,7 @@ class Nav2TrajectorySender(Node):
         remaining_waypoints = len(self.trajectory_points) - self.current_index
 
         if self.check_goal_in_obstacle(x, y):
-            self.get_logger().info("⚠️ 장애물 감지: 목표 취소")
+            self.get_logger().info("❌ 장애물 감지: 목표 취소")
             if not (x, y, theta) in self.revisited_paths:
                 self.revisited_paths.add((x, y, theta))
                 self.trajectory_points.append((x, y, theta))
@@ -206,166 +205,17 @@ class Nav2TrajectorySender(Node):
         remaining_waypoints = len(self.trajectory_points) - self.current_index
         # 만약 모든 목표를 완료했다면, 추가 명령 실행
         if self.current_index >= len(self.trajectory_points):
-            self.get_logger().info("모든 목표 완료. SLAM 맵 저장 및 전송 시작합니다.")
-            # self.save_and_transfer_map()
+            self.get_logger().info("✅ 모든 목표 완료")
             return
         time.sleep(1)
         self.send_next_goal()
 
-    # 추가: SLAM 맵 저장 및 scp 전송 함수
-    def save_and_transfer_map(self):
-        # SLAM 맵 저장 명령어 실행
-        saver_cmd = "ros2 run nav2_map_server map_saver_cli -f final_map -t /slam/map"
-        self.get_logger().info(f"맵 저장 명령 실행: {saver_cmd}")
-        subprocess.run(saver_cmd, shell=True)
-        # scp 명령어 실행 (경로와 사용자 이름을 알맞게 수정)
-        scp_cmd = ("scp /home/storagy/Desktop/PINKLAB/src/storagy/final_map.pgm "
-                   "/home/storagy/Desktop/PINKLAB/src/storagy/final_map.yaml "
-                   "storagy@192.168.1.4:/home/사용자이름/Downloads/")
-        self.get_logger().info(f"SCP 전송 명령 실행: {scp_cmd}")
-        subprocess.run(scp_cmd, shell=True)
-
 # 맵 이미지와 메타 데이터 로드 (Flask용)
 map_image_path, map_data = load_map_image()
 
-html_template = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>실시간 로봇 내비게이션</title>
-    <style>
-        #mapContainer { position: relative; display: inline-block; }
-        #mapImage { display: block; }
-        #overlay { position: absolute; top: 0; left: 0; cursor: crosshair; }
-    </style>
-</head>
-<body>
-    <h1>로봇 현재 위치 및 경로</h1>
-    <div id="mapContainer">
-        <img id="mapImage" src="/remap/get_map_image" alt="Map">
-        <canvas id="overlay" width="{{ map_data.width }}" height="{{ map_data.height }}"></canvas>
-    </div>
-    <p id="coords">현재 로봇 위치:</p>
-    <p id="waypoints_info">총 Waypoints: 0, 남은 Waypoints: 0</p>
-    <button id="generatePathBtn">경로 생성</button>
-    <button id="nextGoalBtn">재매핑 시작</button>
-    <script>
-        const resolution = {{ map_data.resolution }};
-        const origin = {{ map_data.origin }};
-        const mapWidth = {{ map_data.width }};
-        const mapHeight = {{ map_data.height }};
-        const overlay = document.getElementById('overlay');
-        const ctx = overlay.getContext('2d');
-
-        function mapToPixel(mapX, mapY) {
-            let pixelX = (mapX - origin[0]) / resolution;
-            let pixelY = mapHeight - ((mapY - origin[1]) / resolution);
-            return { x: pixelX, y: pixelY };
-        }
-
-        document.getElementById('nextGoalBtn').addEventListener('click', function() {
-            fetch('/remap/send_next_goal', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert("재매핑 요청 결과: " + JSON.stringify(data.message));
-            })
-            .catch(err => {
-                console.error(err);
-            });
-        });
-
-        document.getElementById('generatePathBtn').addEventListener('click', function() {
-            alert("로봇의 현재 위치를 설정해주세요. 현재 위치를 기반으로 경로가 생성됩니다.");
-            fetch('/remap/generate_path', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert("경로 생성 요청 결과: " + JSON.stringify(data.message));
-            })
-            .catch(err => {
-                console.error(err);
-            });
-        });
-
-        async function updateOverlay() {
-            try {
-                // 로봇 경로 및 현재 위치 업데이트
-                const poseResponse = await fetch('/remap/current_pose');
-                const poseData = await poseResponse.json();
-                const pathResponse = await fetch('/remap/robot_path');
-                const pathData = await pathResponse.json();
-
-                ctx.clearRect(0, 0, mapWidth, mapHeight);
-
-                // trajectory waypoint 점들 (녹색 원)
-                const trajResponse = await fetch('/remap/trajectory_points');
-                const trajData = await trajResponse.json();
-                if (trajData && trajData.length > 0) {
-                    trajData.forEach(pt => {
-                        const pixel = mapToPixel(pt[0], pt[1]);
-                        ctx.beginPath();
-                        ctx.arc(pixel.x, pixel.y, 3, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'green';
-                        ctx.fill();
-                    });
-                }
-
-                // 경로 그리기 (빨간 선)
-                if (pathData && pathData.length > 0) {
-                    ctx.beginPath();
-                    pathData.forEach((pt, index) => {
-                        const pixel = mapToPixel(pt.x, pt.y);
-                        if (index === 0) {
-                            ctx.moveTo(pixel.x, pixel.y);
-                        } else {
-                            ctx.lineTo(pixel.x, pixel.y);
-                        }
-                    });
-                    ctx.strokeStyle = 'red';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                }
-
-                // 현재 위치 그리기 (파란 원)
-                if (poseData && poseData.x !== undefined) {
-                    const pixel = mapToPixel(poseData.x, poseData.y);
-                    ctx.beginPath();
-                    ctx.arc(pixel.x, pixel.y, 5, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'blue';
-                    ctx.fill();
-                    document.getElementById('coords').textContent =
-                        '현재 로봇 위치: x=' + poseData.x.toFixed(2) + ', y=' + poseData.y.toFixed(2);
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        async function updateWaypointsInfo() {
-            try {
-                const wpResponse = await fetch('/remap/waypoints');
-                const wpData = await wpResponse.json();
-                document.getElementById('waypoints_info').textContent =
-                    "총 Waypoints: " + wpData.total_waypoints + ", 남은 Waypoints: " + wpData.remaining_waypoints;
-            } catch (err) {
-                console.error(err);
-            }
-        }
-
-        setInterval(updateOverlay, 1000);
-        setInterval(updateWaypointsInfo, 1000);
-    </script>
-</body>
-</html>
-'''
-
 @remap_bp.route('/')
 def index():
-    return render_template_string(html_template, map_data=map_data)
+    return render_template('remap.html', map_data=map_data)
 
 @remap_bp.route('/get_map_image')
 def get_map_image():

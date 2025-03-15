@@ -6,7 +6,7 @@ import cv2
 import socket
 import threading
 import time
-from flask import Blueprint, Response, render_template_string, request, jsonify
+from flask import Blueprint, Response, render_template, request, jsonify
 import sys
 import os
 
@@ -198,75 +198,7 @@ def reset_tracking():
 
 @tracking_bp.route('/')
 def tracking_index():
-    html_template = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>UDP Streaming with SAM2</title>
-      <style>
-        #videoContainer { position: relative; display: inline-block; }
-        #videoCanvas { position: absolute; top: 0; left: 0; cursor: crosshair; }
-        #resetButton { margin-top: 10px; }
-      </style>
-    </head>
-    <body>
-      <h1>UDP Streaming with SAM2 - Click to Select Object</h1>
-      <div id="videoContainer">
-        <img id="videoFeed" src="{{ url_for('tracking.video_feed') }}" alt="Video Feed">
-        <canvas id="videoCanvas"></canvas>
-      </div>
-      <button id="resetButton">Reset SAM2</button>
-      <script>
-        const videoFeed = document.getElementById('videoFeed');
-        const videoCanvas = document.getElementById('videoCanvas');
-        const ctx = videoCanvas.getContext('2d');
-        videoFeed.onload = () => {
-          videoCanvas.width = videoFeed.width;
-          videoCanvas.height = videoFeed.height;
-        };
-        videoCanvas.addEventListener('click', function(event) {
-          const rect = videoCanvas.getBoundingClientRect();
-          const x = event.clientX - rect.left;
-          const y = event.clientY - rect.top;
-          console.log("Clicked at:", x, y);
-          fetch("/tracking/click", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ x: x, y: y })
-          })
-          .then(response => response.json())
-          .then(data => {
-            alert("Server response: " + data.message);
-          })
-          .catch(error => console.error("Error:", error));
-        });
-        // 리셋 버튼 클릭 이벤트 처리
-        const resetButton = document.getElementById('resetButton');
-        resetButton.addEventListener('click', function() {
-          fetch("/tracking/reset", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({})
-          })
-          .then(response => response.json())
-          .then(data => {
-            alert("Reset: " + data.message);
-          })
-          .catch(error => console.error("Reset error:", error));
-        });
-        // 페이지를 벗어날 때 자동 리셋 (sendBeacon 사용)
-        window.addEventListener('unload', function() {
-          const data = JSON.stringify({});
-          // sendBeacon는 Blob을 사용해 보낼 수 있음
-          const blob = new Blob([data], { type: 'application/json' });
-          navigator.sendBeacon("/tracking/reset", blob);
-        });
-      </script>
-    </body>
-    </html>
-    """
-    return render_template_string(html_template)
+    return render_template('tracking.html')
 
 def start_tracking():
     t = threading.Thread(target=process_frames, daemon=True)

@@ -22,7 +22,7 @@ predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
 # -------------------------------
 UDP_IP = "0.0.0.0"
 UDP_PORT_RGB = 5005            # (로봇 → 서버) 이미지를 받을 포트
-ROBOT_IP = "192.168.1.4"       # 로봇 IP
+ROBOT_IP = "192.168.1.12"       # 로봇 IP
 UDP_PORT_CENTER = 5008         # (서버 → 로봇) 중심 좌표를 보낼 포트
 
 # 소켓 생성 & 바인딩 (이미지 수신)

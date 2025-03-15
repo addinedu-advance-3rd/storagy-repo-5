@@ -4,7 +4,7 @@ import yaml
 import cv2
 import math
 import sys
-from flask import Blueprint, jsonify, send_file, render_template_string, request
+from flask import Blueprint, jsonify, send_file, request, render_template
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -59,113 +59,7 @@ def load_map():
 
 @nav_bp.route('/')
 def nav_index():
-    html_template = '''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>내비게이션</title>
-        <style>
-            #mapContainer { position: relative; display: inline-block; }
-            #mapImage { display: block; }
-            #overlay { position: absolute; top: 0; left: 0; cursor: crosshair; }
-        </style>
-    </head>
-    <body>
-        <h1>실시간 내비게이션</h1>
-        <div id="mapContainer">
-            <img id="mapImage" src="/nav/get_map_image" alt="Map">
-            <canvas id="overlay"></canvas>
-        </div>
-        <p id="coords">현재 로봇 위치: </p>
-        <p id="userCoords">사용자 위치: </p>
-        <script>
-            const resolution = {{ map_data.resolution }};
-            const origin = {{ map_data.origin }};
-            const mapWidth = {{ map_data.width }};
-            const mapHeight = {{ map_data.height }};
-            const overlay = document.getElementById('overlay');
-            overlay.width = mapWidth;
-            overlay.height = mapHeight;
-            const ctx = overlay.getContext('2d');
-
-            function mapToPixel(mapX, mapY) {
-                let pixelX = (mapX - origin[0]) / resolution;
-                let pixelY = mapHeight - ((mapY - origin[1]) / resolution);
-                return { x: pixelX, y: pixelY };
-            }
-
-            // 지도 클릭 시 목표 좌표를 서버로 전송
-            overlay.addEventListener('click', function(e) {
-                const rect = overlay.getBoundingClientRect();
-                const pixelX = Math.floor(e.clientX - rect.left);
-                const pixelY = Math.floor(e.clientY - rect.top);
-                const mapX = origin[0] + (pixelX * resolution);
-                const mapY = origin[1] + ((mapHeight - pixelY) * resolution);
-                fetch('/nav/set_target', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ x: mapX, y: mapY })
-                })
-                .then(response => response.json())
-                .then(data => { alert("목표 전송 결과: " + JSON.stringify(data)); })
-                .catch(error => { alert("목표 전송 오류: " + error); });
-            });
-
-            // 주기적으로 로봇 위치, 경로, 목표를 갱신하여 그리기
-            async function updateOverlay() {
-                try {
-                    const poseResponse = await fetch('/nav/current_pose');
-                    const poseData = await poseResponse.json();
-                    const pathResponse = await fetch('/nav/robot_path');
-                    const pathData = await pathResponse.json();
-                    const targetResponse = await fetch('/nav/current_target');
-                    const targetData = await targetResponse.json();
-
-                    ctx.clearRect(0, 0, mapWidth, mapHeight);
-
-                    if (pathData && pathData.length > 0) {
-                        ctx.beginPath();
-                        pathData.forEach((pt, index) => {
-                            const pixel = mapToPixel(pt.x, pt.y);
-                            if (index === 0) {
-                                ctx.moveTo(pixel.x, pixel.y);
-                            } else {
-                                ctx.lineTo(pixel.x, pixel.y);
-                            }
-                        });
-                        ctx.strokeStyle = 'red';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
-                    }
-
-                    if (poseData && poseData.x !== undefined) {
-                        const pixel = mapToPixel(poseData.x, poseData.y);
-                        ctx.beginPath();
-                        ctx.arc(pixel.x, pixel.y, 5, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'blue';
-                        ctx.fill();
-                        document.getElementById('coords').textContent =
-                            '현재 로봇 위치: x=' + poseData.x.toFixed(2) + ', y=' + poseData.y.toFixed(2);
-                    }
-
-                    if (targetData && targetData.x !== undefined) {
-                        const pixel = mapToPixel(targetData.x, targetData.y);
-                        ctx.beginPath();
-                        ctx.arc(pixel.x, pixel.y, 5, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'black';
-                        ctx.fill();
-                    }
-                } catch (err) {
-                    console.error(err);
-                }
-            }
-            setInterval(updateOverlay, 1000);
-        </script>
-    </body>
-    </html>
-    '''
-    return render_template_string(html_template, map_data=map_data)
+    return render_template('nav.html', map_data=map_data)
 
 @nav_bp.route('/get_map_image', methods=['GET'])
 def get_map_image():

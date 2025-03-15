@@ -238,13 +238,13 @@ def generate_trajectory():
             simulation_steps += 1
             continue
         astar_traj = move_along_astar_path(robot_position, path)
-        smoothed_traj = smooth_path(astar_traj, window_size=3)
-        for pt in smoothed_traj:
+        # smoothed_traj = smooth_path(astar_traj, window_size=3)
+        for pt in astar_traj:
             pt_tuple = (round(pt[0], 2), round(pt[1], 2), round(pt[2], 2))
             if pt_tuple not in trajectory_set:
                 trajectory_sim.append(pt)
                 trajectory_set.add(pt_tuple)
-        robot_position = tuple(smoothed_traj[-1][:2])
+        robot_position = tuple(astar_traj[-1][:2])
         visited_nodes.add(next_target)
         simulation_steps += 1
 

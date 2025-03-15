@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로봇 호출</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>로봇 호출</h1>
+    <p id="instruction">로봇을 호출할 위치를 클릭해주세요</p>
+    <div id="mapContainer">
+        <img id="mapImage" src="{{ url_for('nav.get_map_image') }}" alt="Map">
+        <canvas id="overlay"></canvas>
+    </div>
+    <p id="coords">현재 로봇 위치: </p>
+    <button id="trackingButton" onclick="location.href=window.location.origin + '/tracking/'">트랙킹 모드 전환</button>
+    <script>
+        const resolution = {{ map_data.resolution }};
+        const origin = {{ map_data.origin }};
+        const mapWidth = {{ map_data.width }};
+        const mapHeight = {{ map_data.height }};
+        const overlay = document.getElementById('overlay');
+        overlay.width = mapWidth;
+        overlay.height = mapHeight;
+        const ctx = overlay.getContext('2d');
+
+        function mapToPixel(mapX, mapY) {
+            let pixelX = (mapX - origin[0]) / resolution;
+            let pixelY = mapHeight - ((mapY - origin[1]) / resolution);
+            return { x: pixelX, y: pixelY };
+        }
+
+        overlay.addEventListener('click', function(e) {
+            const rect = overlay.getBoundingClientRect();
+            const pixelX = Math.floor(e.clientX - rect.left);
+            const pixelY = Math.floor(e.clientY - rect.top);
+            const mapX = origin[0] + (pixelX * resolution);
+            const mapY = origin[1] + ((mapHeight - pixelY) * resolution);
+            fetch("{{ url_for('nav.set_target') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ x: mapX, y: mapY })
+            })
+            .then(response => response.json())
+            .then(data => { alert("목표 전송 결과: " + JSON.stringify(data)); })
+            .catch(error => { alert("목표 전송 오류: " + error); });
+        });
+
+        async function updateOverlay() {
+            try {
+                const poseResponse = await fetch("{{ url_for('nav.current_pose') }}");
+                const poseData = await poseResponse.json();
+                const pathResponse = await fetch("{{ url_for('nav.robot_path') }}");
+                const pathData = await pathResponse.json();
+                const targetResponse = await fetch("{{ url_for('nav.current_target') }}");
+                const targetData = await targetResponse.json();
+
+                ctx.clearRect(0, 0, mapWidth, mapHeight);
+
+                if (pathData && pathData.length > 0) {
+                    ctx.beginPath();
+                    pathData.forEach((pt, index) => {
+                        const pixel = mapToPixel(pt.x, pt.y);
+                        if (index === 0) {
+                            ctx.moveTo(pixel.x, pixel.y);
+                        } else {
+                            ctx.lineTo(pixel.x, pixel.y);
+                        }
+                    });
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                if (poseData && poseData.x !== undefined) {
+                    const pixel = mapToPixel(poseData.x, poseData.y);
+                    ctx.beginPath();
+                    ctx.arc(pixel.x, pixel.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'blue';
+                    ctx.fill();
+                    document.getElementById('coords').textContent =
+                        '현재 로봇 위치: x=' + poseData.x.toFixed(2) + ', y=' + poseData.y.toFixed(2);
+                }
+
+                if (targetData && targetData.x !== undefined) {
+                    const pixel = mapToPixel(targetData.x, targetData.y);
+                    ctx.beginPath();
+                    ctx.arc(pixel.x, pixel.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'black';
+                    ctx.fill();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        setInterval(updateOverlay, 1000);
+    </script>
+</body>
+</html>

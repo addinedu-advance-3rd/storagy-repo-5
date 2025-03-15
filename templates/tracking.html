@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Tracking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>실시간 트랙킹</h1>
+    <p id="instruction">로봇이 따라다닐 사람을 선택해주세요</p>
+    <div id="videoContainer">
+        <img id="videoFeed" src="{{ url_for('tracking.video_feed') }}" alt="No camera image" onerror="showNoCameraMessage()">
+        <span id="noCameraMessage">No camera image</span>
+        <canvas id="videoCanvas"></canvas>
+    </div>
+    <button id="resetButton">중지</button>
+    <script>
+        const videoFeed = document.getElementById('videoFeed');
+        const videoCanvas = document.getElementById('videoCanvas');
+        const noCameraMessage = document.getElementById('noCameraMessage');
+        const ctx = videoCanvas.getContext('2d');
+
+        videoFeed.onload = () => {
+            videoCanvas.width = videoFeed.width;
+            videoCanvas.height = videoFeed.height;
+            videoFeed.style.display = 'block';
+            noCameraMessage.style.display = 'none';
+        };
+
+        function showNoCameraMessage() {
+            videoFeed.style.display = 'none';
+            noCameraMessage.style.display = 'block';
+        }
+
+        videoCanvas.addEventListener('click', function(event) {
+            const rect = videoCanvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            console.log("Clicked at:", x, y);
+
+            fetch("{{ url_for('tracking.handle_click') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ x: x, y: y })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("Server response: " + data.message);
+            })
+            .catch(error => console.error("Error:", error));
+        });
+
+        const resetButton = document.getElementById('resetButton');
+        resetButton.addEventListener('click', function() {
+            fetch("{{ url_for('tracking.reset_tracking') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("Reset: " + data.message);
+            })
+            .catch(error => console.error("Reset error:", error));
+        });
+
+        window.addEventListener('unload', function() {
+            const data = JSON.stringify({});
+            const blob = new Blob([data], { type: 'application/json' });
+            navigator.sendBeacon("{{ url_for('tracking.reset_tracking') }}", blob);
+        });
+    </script>
+</body>
+</html>

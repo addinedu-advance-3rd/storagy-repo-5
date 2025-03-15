@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Mapping</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>자동 매핑</h1>
+    <p id="instruction">경로 생성 후 자동 매핑을 진행해주세요</p>
+    <div id="mapContainer">
+        <img id="mapImage" src="{{ url_for('remap.get_map_image') }}" alt="Map">
+        <canvas id="overlay"></canvas>
+    </div>
+    <p id="coords">현재 로봇 위치:</p>
+    <p id="waypoints_info">총 Waypoints: 0, 남은 Waypoints: 0</p>
+    <div class="button-container">
+        <button id="generatePathBtn">경로 생성</button>
+        <button id="nextGoalBtn">자동 매핑 시작</button>
+    </div>
+    <script>
+        const resolution = {{ map_data.resolution }};
+        const origin = {{ map_data.origin }};
+        const mapWidth = {{ map_data.width }};
+        const mapHeight = {{ map_data.height }};
+        const overlay = document.getElementById('overlay');
+        overlay.width = mapWidth;
+        overlay.height = mapHeight;
+        const ctx = overlay.getContext('2d');
+
+        function mapToPixel(mapX, mapY) {
+            let pixelX = (mapX - origin[0]) / resolution;
+            let pixelY = mapHeight - ((mapY - origin[1]) / resolution);
+            return { x: pixelX, y: pixelY };
+        }
+
+        document.getElementById('nextGoalBtn').addEventListener('click', function() {
+            fetch("{{ url_for('remap.send_next_goal_route') }}", { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                alert("재매핑 요청 결과: " + JSON.stringify(data.message));
+            })
+            .catch(err => { console.error(err); });
+        });
+
+        document.getElementById('generatePathBtn').addEventListener('click', function() {
+            alert("로봇의 현재 위치를 설정해주세요. 현재 위치를 기반으로 경로가 생성됩니다.");
+            fetch("{{ url_for('remap.generate_path') }}", { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                alert("경로 생성 요청 결과: " + JSON.stringify(data.message));
+            })
+            .catch(err => { console.error(err); });
+        });
+
+        async function updateOverlay() {
+            try {
+                const poseResponse = await fetch("{{ url_for('remap.current_pose') }}");
+                const poseData = await poseResponse.json();
+                const pathResponse = await fetch("{{ url_for('remap.robot_path') }}");
+                const pathData = await pathResponse.json();
+                const trajResponse = await fetch("{{ url_for('remap.get_trajectory_points') }}");
+                const trajData = await trajResponse.json();
+
+                ctx.clearRect(0, 0, mapWidth, mapHeight);
+
+                if (trajData && trajData.length > 0) {
+                    trajData.forEach(pt => {
+                        const pixel = mapToPixel(pt[0], pt[1]);
+                        ctx.beginPath();
+                        ctx.arc(pixel.x, pixel.y, 3, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'green';
+                        ctx.fill();
+                    });
+                }
+
+                if (pathData && pathData.length > 0) {
+                    ctx.beginPath();
+                    pathData.forEach((pt, index) => {
+                        const pixel = mapToPixel(pt.x, pt.y);
+                        if (index === 0) {
+                            ctx.moveTo(pixel.x, pixel.y);
+                        } else {
+                            ctx.lineTo(pixel.x, pixel.y);
+                        }
+                    });
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                if (poseData && poseData.x !== undefined) {
+                    const pixel = mapToPixel(poseData.x, poseData.y);
+                    ctx.beginPath();
+                    ctx.arc(pixel.x, pixel.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'blue';
+                    ctx.fill();
+                    document.getElementById('coords').textContent =
+                        '현재 로봇 위치: x=' + poseData.x.toFixed(2) + ', y=' + poseData.y.toFixed(2);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function updateWaypointsInfo() {
+            try {
+                const wpResponse = await fetch("{{ url_for('remap.waypoints') }}");
+                const wpData = await wpResponse.json();
+                document.getElementById('waypoints_info').textContent =
+                    "총 Waypoints: " + wpData.total_waypoints + ", 남은 Waypoints: " + wpData.remaining_waypoints;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        setInterval(updateOverlay, 1000);
+        setInterval(updateWaypointsInfo, 1000);
+    </script>
+</body>
+</html>
