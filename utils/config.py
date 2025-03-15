@@ -12,6 +12,8 @@ MAP_PNG_PATH = os.path.join(MAP_DIR, "map.png")
 MAP_PGM_PATH = os.path.join(MAP_DIR, "map.pgm")
 MAP_TXT_PATH = os.path.join(MAP_DIR, "map.txt")
 
+AI_MODEL_DIR = os.path.join(BASE_DIR, "ai", "checkpoint_a2b_inorm")
+
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'tif', 'tiff'}
 
 # 필요한 디렉토리 생성

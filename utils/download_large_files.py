@@ -140,3 +140,5 @@ def download_models():
     downloader.download_all_files_async(callback=on_download_complete)
     print(f"{HF_REPO_ID}로부터 대용량 파일을 비동기 다운로드 중...")
     logger.info(f"Model downloads started in background from {HF_REPO_ID}...")
+
+download_models()

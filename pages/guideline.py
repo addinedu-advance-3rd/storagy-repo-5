@@ -12,7 +12,7 @@ import yaml
 import io
 import traceback
 
-from utils.config import UPLOADS_DIR, MAP_DIR, MAP_TEMP_DIR, ALLOWED_IMAGE_EXTENSIONS
+from utils.config import UPLOADS_DIR, MAP_DIR, MAP_TEMP_DIR, ALLOWED_IMAGE_EXTENSIONS, AI_MODEL_DIR
 
 from ai.main import get_parser
 from ai.train import test
@@ -66,7 +66,7 @@ def extract_numbers(ocr_text):
     return [float(num) if '.' in num else int(num) for num in numbers]
 
 # 도면 전처리 모듈 (ai/train.py) 실행을 위한 인자 생성 함수
-def create_args(data_dir, result_dir):
+def create_args(data_dir, result_dir, model_dir):
     """
     test 함수 실행을 위한 인자 객체 생성
     
@@ -78,7 +78,7 @@ def create_args(data_dir, result_dir):
         argparse.Namespace: test 함수에 전달할 인자 객체
     """
     parser = get_parser()
-    args = parser.parse_args([])  # 빈 인자 목록 전달
+    args = parser.parse_args()  # 빈 인자 목록 전달
 
     # mode를 test로 설정
     args.mode = "test"
@@ -86,6 +86,7 @@ def create_args(data_dir, result_dir):
     # 중요: data_dir를 직접 설정하여 /test 서브디렉토리를 사용하지 않도록 함
     args.data_dir = data_dir
     args.result_dir = result_dir
+    args.ckpt_dir = model_dir
 
     return args
 
@@ -213,7 +214,7 @@ def generate_files():
             generate_response['PGM'] = False
             generate_response['error'] += "PGM 파일 생성 시 발생한 오류: \n" + str(e)
         else:
-            args = create_args(MAP_TEMP_DIR, MAP_DIR)
+            args = create_args(MAP_TEMP_DIR, MAP_DIR, AI_MODEL_DIR)
             test(args)
 
             if "map.png" in [f for f in os.listdir(MAP_DIR)]:
@@ -231,7 +232,9 @@ def generate_files():
                 
                 # 이진화
                 # _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV)
-                _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+                # _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+                _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
                 
                 # PGM 데이터를 메모리에 생성
                 height, width = binary.shape

@@ -6,3 +6,8 @@ tqdm
 ultralytics
 torch
 cairosvg
+tensorboard
+scipy
+scikit-image
+cairosvg
+pytesseract
