@@ -1,9 +1,9 @@
-# **storagy-repo-5** 🚀
+# 🚀 **storagy-repo-5**
 
 ## 📌 **1️⃣ 프로젝트 개요**
 
 `storagy-repo-5`는 **건물 내 배달 로봇 및 스토리지 로봇**이 특정 용도에 국한되지 않고, 
-**필수 기능과 사용자 편의성에 초점을 맞춘 서비스**를 제공하도록 개발된 프로젝트입니다.
+**필수 기능과 사용자 편의성에 초점을 맞춘 서비스**를 제공하도록 개발된 서비스 패키지의 리포지토리입니다.
 
 **이 프로젝트는 다음과 같은 주요 기능을 포함합니다:**
 
@@ -12,20 +12,22 @@
 - 🏢 **평면도 맵 변환**: 업로드된 건물 도면을 로봇 네비게이션을 위한 **PGM 맵**으로 자동 변환
 - 🗺 **자동 매핑**: 기존 맵이 없는 공간에서도 **로봇이 직접 매핑**을 수행하여 경로를 탐색
 
-이외에 기본적으로 다음과 같은 기능이 구현되어 있습니다:
-- 📂 **AI 기반 도면 변환** (PGM 파일 생성)
-- 🔍 **객체 탐색 기능** (이미지 내 특정 영역 감지)
-- 🚀 **자동 모델 다운로드** (Hugging Face에서 대용량 모델 자동 다운로드)
-- 📡 **웹 서버 지원** (`main_server.py` 실행 시 서버 자동 시작)
+위 기능은 다음과 같은 기술을 반영합니다:
+
+- 📡 웹 서버 기반: 메인 스크립트 실행 시 **Flask** 서버 자동 시작
+- 📂 AI 기반 도면 전처리: **Pix2Pix**로 전처리 후, 해당 이미지로 YAML 파일 및 PGM 파일 생성
+- 🚀 대용량 모델 관리: **HuggingFace** 저장소와 패키지 이용
+- 🔍 객체 인식: **SAM2**를 이용하여 영상 내 특정 객체 감지
 
 ---
 
 ## 📌 **2️⃣ 프로젝트 구조**
 
+```bash
 📦 storagy-repo-5
 ┣ 📂 ai
 ┃ ┣ 📂 checkpoint_a2b_inorm
-┃ ┃ ┗ 📜 model_epoch400.pth → 사전 학습된 모델 가중치
+┃ ┃ ┗ 🗂 model_epoch400.pth → 사전 학습된 모델 가중치
 ┃ ┣ 📂 log_a2b_inorm
 ┃ ┃ ┣ 📂 train → 학습 로그 데이터
 ┃ ┃ ┗ 📂 val → 검증 로그 데이터
@@ -38,10 +40,10 @@
 ┣ 📂 SAM2_streaming
 ┃ ┣ 📂 checkpoints
 ┃ ┃ ┗ 📂 sam2
-┃ ┃   ┗ 📜 sam2_hiera_tiny.pt → SAM2 모델 가중치
+┃ ┃   ┗ 🗂 sam2_hiera_tiny.pth → SAM2 모델 가중치
 ┃ ┣ 📂 configs
 ┃ ┃ ┗ 📂 sam2
-┃ ┃   ┗ 📜 sam2_hiera_t.yaml → 모델 설정 파일
+┃ ┃   ┗ 📝 sam2_hiera_t.yaml → 모델 설정 파일
 ┃ ┣ 📂 sam2
 ┃ ┃ ┣ 📂 modeling → 모델 구현 모듈
 ┃ ┃ ┣ 📜 build_sam.py → SAM2 모델 구축 로직
@@ -55,28 +57,34 @@
 ┃ ┗ 📜 tracking.py → 객체 추적 페이지 기능
 ┣ 📂 robot
 ┃ ┣ 📜 path_planning.py → 경로 계획 알고리즘
-┃ ┗ 📜 robot.py → 로봇 제어 인터페이스
+┃ ┗ 📜 robot.py → 로봇 제어 인터페이스 (스토리지 로봇 패키지에 삽입)
 ┣ 📂 static
-┃ ┣ 📂 css → 스타일시트 파일
-┃ ┣ 📂 images → 이미지 리소스
-┃ ┣ 📂 js → 자바스크립트 파일
+┃ ┣ 📂 css
+┃ ┃ ┗ 🎨 styles.css → 스타일시트 파일
+┃ ┣ 📂 images
+┃ ┃ ┗  📷 social_share.jpg → 페이지 배경화면 이미지
+┃ ┣ 📂 js
+┃ ┃ ┗  📜 audio.js → 오디오 자바스크립트 파일
 ┃ ┣ 📂 map
-┃ ┃ ┣ 📜 map.pgm → 로봇 네비게이션용 맵 이미지
-┃ ┃ ┣ 📜 map.png → 웹 표시용 맵 이미지
-┃ ┃ ┗ 📜 map.yaml → 맵 메타데이터
-┃ ┗ 📂 sounds → 사용자 인터페이스 효과음
+┃ ┃ ┣ 🗺 map.pgm → 로봇 네비게이션용 맵 이미지
+┃ ┃ ┣ 📷 map.png → 웹 표시용 맵 이미지
+┃ ┃ ┗ 📝 map.yaml → 맵 메타데이터
+┃ ┣ 📂 sounds
+┃ ┃ ┣ 🎵 click1.mp3 → 웹 페이지 효과음
+┃ ┃ ┗ 🎵 hover1.mp3 → 웹 페이지 효과음
 ┣ 📂 templates
-┃ ┣ 📜 guideline.html → 가이드라인 페이지 템플릿
-┃ ┣ 📜 main_server.html → 메인 페이지 템플릿
-┃ ┣ 📜 nav.html → 네비게이션 페이지 템플릿
-┃ ┣ 📜 remap.html → 맵 수정 페이지 템플릿
-┃ ┗ 📜 tracking.html → 객체 추적 페이지 템플릿
+┃ ┣ 🌍 guideline.html → 가이드라인 페이지 템플릿
+┃ ┣ 🌍 main_server.html → 메인 페이지 템플릿
+┃ ┣ 🌍 nav.html → 네비게이션 페이지 템플릿
+┃ ┣ 🌍 remap.html → 맵 수정 페이지 템플릿
+┃ ┗ 🌍 tracking.html → 객체 추적 페이지 템플릿
 ┣ 📂 utils
 ┃ ┣ 📜 config.py → 시스템 전역 설정
 ┃ ┗ 📜 download_large_files.py → 대용량 모델 파일 다운로드 유틸리티
 ┣ 📜 main_server.py → 웹 서버 메인 실행 파일
 ┣ 📜 requirements.txt → 필요 패키지 목록
 ┗ 📜 README.md → 프로젝트 설명 및 문서
+```
 
 ---
 
@@ -159,6 +167,6 @@ os.makedirs('SAM2_streaming/configs/sam2', exist_ok=True)
 hf_hub_download(repo_id='YOUR_USERNAME/storagy-repo-5-models', filename='model_epoch400.pth', local_dir='ai/checkpoint_a2b_inorm')
 hf_hub_download(repo_id='YOUR_USERNAME/storagy-repo-5-models', filename='events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.0', local_dir='ai/log_a2b_inorm/train')
 hf_hub_download(repo_id='YOUR_USERNAME/storagy-repo-5-models', filename='events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.1', local_dir='ai/log_a2b_inorm/val')
-hf_hub_download(repo_id='YOUR_USERNAME/storagy-repo-5-models', filename='sam2_hiera_tiny.pt', local_dir='SAM2_streaming/configs/sam2')
+hf_hub_download(repo_id='YOUR_USERNAME/storagy-repo-5-models', filename='sam2_hiera_tiny.pt', local_dir='SAM2_streaming/checkpoints/sam2')
 "
 ```

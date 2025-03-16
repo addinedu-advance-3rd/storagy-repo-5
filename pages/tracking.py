@@ -214,7 +214,7 @@ def start_tracking():
         try:
             print("SAM2 모델 로드 중...")
             predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
-            print("SAM2 모델 로드 완료!")
+            print("✅ SAM2 모델 로드 완료!")
         except FileNotFoundError as e:
             print(f"❌ SAM2 모델 파일을 찾을 수 없습니다: {e}")
             print("웹 서버는 실행되지만 객체 추적 기능이 동작하지 않을 수 있습니다.")
