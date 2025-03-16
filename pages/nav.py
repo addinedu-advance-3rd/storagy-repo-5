@@ -118,6 +118,12 @@ def get_user_gps():
          return jsonify({})
     return jsonify(current_user_gps)
 
+@nav_bp.route('/clear_path', methods=['POST'])
+def clear_path():
+    global robot_path_data
+    robot_path_data = []  # 리스트 비우기
+    return jsonify({"status": "path cleared"})
+
 # @nav_bp.route('/stop_nav', methods=['POST', 'GET'])
 # def stop_nav_route():
 #     stop_nav()

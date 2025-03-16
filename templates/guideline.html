@@ -170,12 +170,11 @@
             <h1>Nav2 맵 변환기</h1>
             <a href="/guideline" class="restart-btn">도면 재업로드 하기</a>
         </div>
-
+        
         <div id="mainContent">
+            <p class="guide-text">평면도 이미지를 AI가 map.pgm, map.yaml 파일을 만들어줍니다</p>
             {% if not uploaded_image_url %}
                 <div class="guide-info">
-                    <p class="guide-text">[안내] 평면도 이미지를 업로드하면 AI가 map.pgm 파일을 만들어줍니다.<br>
-                    이미지와 실제 거리 비율을 계산하여 map.yaml 파일을 만들어줍니다.</p>
                     <p class="guide-step">1. 평면도 이미지를 업로드 해주세요.</p>
                 </div>
 
@@ -273,24 +272,23 @@
         let points = []; // 변수 재할당 가능
         const uploadedImage = document.getElementById('uploadedImage');
         
-        if (uploadedImage) {
+        uploadedImage.onload = function () {
+
             // 이미지 객체에서 이미지 크기 직접 가져오기
             const imageWidth = uploadedImage.naturalWidth;
             const imageHeight = uploadedImage.naturalHeight;
             // 백엔드에서 전달 받는 대체 방법도 있음
-
+    
             console.log('이미지 크기:', imageWidth+'px', 'x', imageHeight+'px');
-
+    
             // 캔버스 초기화
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             const distanceElement = document.getElementById('distance');
             const resetPointsButton = document.getElementById('resetPoints');
-
+    
             console.log('캔버스 초기화 완료.');
-
-            // 이미지가 로드되면 캔버스 크기 설정
-            uploadedImage.onload = function() {
+    
             // 캔버스 크기를 이미지와 정확히 일치시킴
             canvas.width = imageWidth;
             canvas.height = imageHeight;
@@ -300,14 +298,13 @@
             canvas.style.height = uploadedImage.clientHeight + 'px';
             
             console.log('이미지 로드됨. 캔버스 크기 설정 완료.');
-            };
-            
+ 
             // 윈도우 크기가 변경되면 캔버스 크기 조정
             window.addEventListener('resize', function() {
                 if (uploadedImage.complete) {
                     canvas.style.width = uploadedImage.clientWidth + 'px';
                     canvas.style.height = uploadedImage.clientHeight + 'px';
-
+    
                     console.log('윈도우 크기 변경됨. 캔버스 크기 조정 완료.');
                 }
             });
@@ -319,7 +316,7 @@
                     alert('점은 최대 두 개까지만 찍을 수 있습니다.');
                     return;
                 }
-
+    
                 // 캔버스 내 클릭 좌표 계산 (비율 고려)
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
@@ -367,7 +364,7 @@
                     distanceElement.textContent = distance.toFixed(6);
                 }
             }
-
+    
             // 점 초기화 버튼
             if (resetPointsButton) {
                 resetPointsButton.addEventListener('click', function() {
@@ -377,14 +374,14 @@
                     drawOnCanvas();
                 });
             }
-
+    
             const generateFilesButton = document.getElementById('generateFiles');
-
+    
             // 파일 생성 버튼 이벤트 리스너
             if(generateFilesButton) {
                 generateFilesButton.addEventListener('click', function() {
                     const pixelDistance = parseFloat(distanceElement.textContent);
-
+    
                     // 숫자 선택 또는 직접 입력 값 가져오기
                     let realDistance;
                     
@@ -409,12 +406,12 @@
                     
                     // 단위 가져오기
                     const unit = document.getElementById('unitDropdown').value;
-
+    
                     // 소수점 형식 지정 함수
                     function formatNumber(num, decimals = 6) {
                         return parseFloat(parseFloat(num).toFixed(decimals));
                     }
-
+    
                     // 스케일 계산 (단위 변환 필요 - mm, cm, km를 m로 변환)
                     let convertedDistance = realDistance;
                     switch(unit) {
@@ -434,7 +431,7 @@
                     // origin 계산
                     const originX = formatNumber(-(imageWidth * scaleFactor) / 2);
                     const originY = formatNumber(-(imageHeight * scaleFactor) / 2);
-
+    
                     // https://hianna.tistory.com/857
                     // yyyymmddhhmmss 포맷으로 현재날짜시간을 출력해주는 함수
                     function getCurrentDateTime() {
@@ -454,7 +451,7 @@
                         const seconds = now.getSeconds().toString().padStart(2, '0');
                         return year + month + day + hours + minutes + seconds;
                     }
-
+    
                     // 데이터 수집
                     const data = {
                         pixel_distance: pixelDistance,
@@ -486,10 +483,10 @@
                     .then(data => {
                         // 메인 콘텐츠 숨기기
                         document.getElementById('mainContent').style.display = 'none';
-
+    
                         // 성공 메시지 표시 및 다운로드 버튼 활성화
                         document.getElementById('fileGenerationComplete').style.display = 'block';
-
+    
                         if(!data.YAML && !data.PGM ) {
                             alert('파일 생성 중 오류가 발생했습니다: ' + data.error);
                         } else {
@@ -509,7 +506,8 @@
                     });
                 });
             }
-        }
+        };
+
     </script>
 </body>
 </html>

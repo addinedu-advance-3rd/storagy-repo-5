@@ -47,6 +47,11 @@
             .catch(error => { alert("목표 전송 오류: " + error); });
         });
 
+        // 페이지 떠날 때 경로 초기화
+        window.addEventListener('beforeunload', function() {
+            navigator.sendBeacon("{{ url_for('nav.clear_path') }}");
+        });
+
         async function updateOverlay() {
             try {
                 const poseResponse = await fetch("{{ url_for('nav.current_pose') }}");

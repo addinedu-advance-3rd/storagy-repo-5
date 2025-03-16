@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <h1>실시간 트랙킹</h1>
+    <h1>트랙킹</h1>
     <p id="instruction">로봇이 따라다닐 사람을 선택해주세요</p>
     <div id="videoContainer">
         <img id="videoFeed" src="{{ url_for('tracking.video_feed') }}" alt="No camera image" onerror="showNoCameraMessage()">
