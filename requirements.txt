@@ -1,10 +1,14 @@
+huggingface_hub
 matplotlib
+numpy
 opencv-python
 ipython
 hydra-core
 tqdm
 ultralytics
 torch
+torchvision
+Pillow
 cairosvg
 tensorboard
 scipy

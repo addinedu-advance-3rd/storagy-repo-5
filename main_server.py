@@ -30,9 +30,9 @@ def index():
     return render_template('main_server.html')
 
 def check_required_files():
-    """필요한 파일들이 존재하는지 확인하고 없으면 다운로드 시작"""
+    """필요한 파일들이 존재하는지 확인하고 없으면 다운로드 시작 (완료까지 대기)"""
     files_to_check = [
-        'SAM2_streaming/configs/sam2/sam2_hiera_tiny.pt',
+        'SAM2_streaming/checkpoints/sam2/sam2_hiera_tiny.pt',
         'ai/checkpoint_a2b_inorm/model_epoch400.pth',
         'ai/log_a2b_inorm/train/events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.0',
         'ai/log_a2b_inorm/val/events.out.tfevents.1741239033.addinedu-Bravo-17-D7VF.15745.1'
@@ -43,14 +43,22 @@ def check_required_files():
     if missing_files:
         print(f"로컬 리포지토리에 없는 대용량 파일들을 다운로드합니다: {missing_files}")
         logger.info(f"로컬 리포지토리에 없는 대용량 파일들을 다운로드합니다: {missing_files}")
-        # HuggingFace 공개 저장소에서 직접 다운로드
-        download_models()
+        
+        # 다운로드 시작하고 완료될 때까지 대기
+        from utils.download_large_files import download_models_and_wait
+        download_models_and_wait()
+        
+        # 다운로드 후에도 파일이 없는지 다시 확인
+        missing_after_download = [f for f in files_to_check if not os.path.exists(f)]
+        if missing_after_download:
+            print(f"⚠️ 다운로드 후에도 파일이 없습니다: {missing_after_download}")
+            logger.warning(f"다운로드 후에도 파일이 없습니다: {missing_after_download}")
     else:
         print("필요한 모든 대용량 파일이 이미 있습니다. 다음 단계로 넘어갑니다.")
         logger.info("필요한 모든 대용량 파일이 이미 있습니다. 다음 단계로 넘어갑니다.")
 
 if __name__ == '__main__':
-    # 파일 확인 및 필요시 다운로드 시작
+    # 파일 확인 및 필요시 다운로드 시작 (완료 후 다음 단계로 진행)
     check_required_files()
 
     # nav 관련 초기화 (맵 로드 및 ROS 스레드 시작)

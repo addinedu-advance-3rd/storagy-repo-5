@@ -5,14 +5,13 @@ STATIC_DIR = os.path.join(BASE_DIR, "static")
 UPLOADS_DIR = os.path.join(STATIC_DIR, 'uploads')
 MAP_DIR = os.path.join(STATIC_DIR, 'map')
 MAP_TEMP_DIR = os.path.join(MAP_DIR, 'temp')
+AI_MODEL_DIR = os.path.join(BASE_DIR, "ai", "checkpoint_a2b_inorm")
 DEBUG_IMG_DIR = os.path.join(STATIC_DIR, "debug")
 
 YAML_PATH = os.path.join(MAP_DIR, "map.yaml")
 MAP_PNG_PATH = os.path.join(MAP_DIR, "map.png")
 MAP_PGM_PATH = os.path.join(MAP_DIR, "map.pgm")
 MAP_TXT_PATH = os.path.join(MAP_DIR, "map.txt")
-
-AI_MODEL_DIR = os.path.join(BASE_DIR, "ai", "checkpoint_a2b_inorm")
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'tif', 'tiff'}
 
@@ -23,6 +22,7 @@ def ensure_directories_exist():
         UPLOADS_DIR,
         MAP_DIR,
         MAP_TEMP_DIR,
+        AI_MODEL_DIR,
         DEBUG_IMG_DIR
     ]
     

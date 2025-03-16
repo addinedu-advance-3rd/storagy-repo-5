@@ -33,7 +33,7 @@ class HFDownloader:
             },
             {
                 'remote_path': 'sam2_hiera_tiny.pt',
-                'local_path': 'SAM2_streaming/configs/sam2/sam2_hiera_tiny.pt'
+                'local_path': 'SAM2_streaming/checkpoints/sam2/sam2_hiera_tiny.pt'
             }
         ]
     
@@ -43,11 +43,13 @@ class HFDownloader:
             import huggingface_hub
             return True
         except ImportError:
+            print("huggingface_hub 패키지가 설치되어 있지 않습니다. 설치를 시도합니다...")
             logger.info("huggingface_hub 패키지 설치 중...")
             try:
                 subprocess.check_call(["pip", "install", "-q", "huggingface_hub"])
                 return True
             except Exception as e:
+                print(f"❌ huggingface_hub 설치 실패: {str(e)}")
                 logger.error(f"huggingface_hub 설치 실패: {str(e)}")
                 return False
     
@@ -89,12 +91,14 @@ class HFDownloader:
             return True
             
         except Exception as e:
+            print(f"❌ {remote_path} 다운로드 중 에러 발생: {str(e)}")
             logger.error(f"{remote_path} 다운로드 중 에러 발생: {str(e)}")
             return False
     
     def download_all_files(self):
         """모든 필요 파일 다운로드"""
         if not self.ensure_hf_hub_installed():
+            print("❌ huggingface_hub 패키지 설치 확인에 실패했습니다.")
             logger.error("huggingface_hub 패키지 설치 확인에 실패했습니다.")
             return False
             
@@ -130,15 +134,52 @@ def download_models():
     
     def on_download_complete(success):
         if success:
-            print("성공적으로 모든 대용량 파일을 다운로드했습니다!")
+            print("✅ 성공적으로 모든 대용량 파일을 다운로드했습니다!")
             logger.info("성공적으로 모든 대용량 파일을 다운로드했습니다!")
         else:
-            print("몇몇 대용량 파일을 다운로드 받는 데 실패했습니다. 로그를 확인하세요.")
+            print("❌ 몇몇 대용량 파일을 다운로드 받는 데 실패했습니다. 로그를 확인하세요.")
             logger.warning("몇몇 대용량 파일을 다운로드 받는 데 실패했습니다. 로그를 확인하세요.")
     
     # 비동기 다운로드 시작
     downloader.download_all_files_async(callback=on_download_complete)
     print(f"{HF_REPO_ID}로부터 대용량 파일을 비동기 다운로드 중...")
-    logger.info(f"Model downloads started in background from {HF_REPO_ID}...")
+    logger.info(f"{HF_REPO_ID}로부터의 모델 다운로드 백그라운드에서 시작...")
 
-download_models()
+def download_models_and_wait():
+    """
+    비동기 다운로드를 시작하고 완료될 때까지 대기하는 함수
+    
+    Returns:
+        bool: 다운로드 성공 여부
+    """
+    download_completed = threading.Event()
+    success_result = [False]  # 리스트로 감싸서 콜백에서 변경 가능하게 함
+    
+    def on_download_complete(success):
+        if success:
+            print("✅ 성공적으로 모든 대용량 파일을 다운로드했습니다!")
+            logger.info("성공적으로 모든 대용량 파일을 다운로드했습니다!")
+        else:
+            print("❌ 몇몇 대용량 파일을 다운로드 받는 데 실패했습니다. 로그를 확인하세요.")
+            logger.warning("몇몇 대용량 파일을 다운로드 받는 데 실패했습니다. 로그를 확인하세요.")
+        
+        # 결과와 함께 다운로드 완료 이벤트 설정
+        success_result[0] = success
+        download_completed.set()
+    
+    # 다운로드 시작
+    downloader = HFDownloader()
+    downloader.download_all_files_async(callback=on_download_complete)
+    print(f"{HF_REPO_ID}로부터 대용량 파일을 다운로드 중... 완료될 때까지 대기합니다.")
+    logger.info(f"{HF_REPO_ID}로부터 모델 다운로드 시작 - 완료될 때까지 대기 중...")
+    
+    # 다운로드 완료될 때까지 대기 (최대 30분)
+    timeout_seconds = 30 * 60  # 30분
+    if download_completed.wait(timeout=timeout_seconds):
+        print("다운로드가 완료되었습니다. 다음 단계로 넘어갑니다.")
+        logger.info("다운로드 완료. 다음 단계로 진행합니다.")
+        return success_result[0]
+    else:
+        print("⚠️ 다운로드 타임아웃. 일부 파일이 다운로드되지 않았을 수 있습니다.")
+        logger.warning("다운로드 타임아웃. 일부 파일이 다운로드되지 않았을 수 있습니다.")
+        return False

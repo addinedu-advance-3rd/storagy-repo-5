@@ -1,5 +1,3 @@
-# pages/tracking.py
-
 import torch
 import numpy as np
 import cv2
@@ -36,7 +34,10 @@ model_version = 'sam2'
 sam2_checkpoint = os.path.join(SAM2_STREAMING_DIR, "checkpoints", "sam2", "sam2_hiera_tiny.pt")
 model_cfg = "sam2/sam2_hiera_t"
 
-predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
+# 기존 코드 주석 처리
+# predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
+predictor = None  # 나중에 초기화하도록 None으로 설정
+
 # -------------------------------
 # 2) UDP 설정 (이미지 수신 + 중심 좌표 송신)
 # -------------------------------
@@ -70,6 +71,11 @@ frame_lock = threading.Lock()
 # -------------------------------
 def process_frames():
     global latest_frame, point, point_selected, if_init, last_center_x
+
+    # 모델이 로드되지 않았다면 경고 메시지 출력
+    if predictor is None:
+        print("⚠️ SAM2 모델이 로드되지 않았습니다. 객체 추적이 동작하지 않습니다.")
+        return
 
     while True:
         # (A) UDP에서 최신 프레임 읽어오기 (프레임 스킵)
@@ -201,6 +207,21 @@ def tracking_index():
     return render_template('tracking.html')
 
 def start_tracking():
+    global predictor
+    
+    # 모델 로드를 이 시점에서 수행
+    if predictor is None:
+        try:
+            print("SAM2 모델 로드 중...")
+            predictor = build_sam2_camera_predictor(model_cfg, sam2_checkpoint)
+            print("SAM2 모델 로드 완료!")
+        except FileNotFoundError as e:
+            print(f"❌ SAM2 모델 파일을 찾을 수 없습니다: {e}")
+            print("웹 서버는 실행되지만 객체 추적 기능이 동작하지 않을 수 있습니다.")
+        except Exception as e:
+            print(f"❌ SAM2 모델 로드 중 오류 발생: {e}")
+            print("웹 서버는 실행되지만 객체 추적 기능이 동작하지 않을 수 있습니다.")
+
     t = threading.Thread(target=process_frames, daemon=True)
     t.start()
     print("Tracking thread started.")
